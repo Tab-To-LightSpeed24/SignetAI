@@ -16,7 +16,8 @@ import {
   Activity, 
   X,
   FileCheck,
-  Zap
+  Zap,
+  Trash2
 } from 'lucide-react'
 
 type Status = 'idle' | 'uploading' | 'quick-scanning' | 'pre-flight' | 'analyzing' | 'error' | 'exhausted' | 'verifying' | 'capacity_exceeded'
@@ -1263,23 +1264,42 @@ export default function DashboardPage() {
                               flexDirection: 'column',
                             }}
                           >
-                            <button
-                              onClick={() => { setActiveKebabId(null); router.push(`/app/contracts/${contract.id}`) }}
-                              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <FileCheck size={14} /> View AI Analysis
-                            </button>
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', margin: '3px 0' }} />
-                            <button
-                              onClick={() => { setActiveKebabId(null); if (confirm('Delete this contract from your library?')) deleteContract(contract.id) }}
-                              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#E24B4A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(226,75,74,0.08)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <X size={14} /> Delete Log
-                            </button>
+                            {(contract.status === 'pending' || contract.status === 'analyzing' || contract.status === 'pending_capacity') ? (
+                              <button
+                                onClick={() => { 
+                                  setActiveKebabId(null); 
+                                  if (confirm('Cancel analysis and remove this document?')) {
+                                    deleteContract(contract.id)
+                                    showToast('Analysis cancelled and document removed.', 'info')
+                                  }
+                                }}
+                                style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#BA7517', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(186,117,23,0.08)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <X size={14} /> Cancel Analysis
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => { setActiveKebabId(null); router.push(`/app/contracts/${contract.id}`) }}
+                                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <FileCheck size={14} /> View Analysis
+                                </button>
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', margin: '3px 0' }} />
+                                <button
+                                  onClick={() => { setActiveKebabId(null); if (confirm('Delete this contract from your library?')) deleteContract(contract.id) }}
+                                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#E24B4A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(226,75,74,0.08)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Trash2 size={14} /> Delete Analysis
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

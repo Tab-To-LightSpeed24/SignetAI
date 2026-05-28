@@ -6,7 +6,7 @@ import mammoth from 'mammoth'
 import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { PDFParse } from 'pdf-parse'
+import pdf from 'pdf-parse'
 
 function getSupabaseStorage() {
   const cookieStore = cookies()
@@ -167,12 +167,9 @@ Pick the recommendedPerspective that is the natural user perspective:
         let textContent = ''
         let pageCount = 1
         try {
-          const parser = new PDFParse({ data: buffer })
-          const result = await parser.getText()
+          const result = await pdf(buffer)
           textContent = result.text || ''
-          const info = await parser.getInfo().catch(() => ({ total: 1 }))
-          pageCount = info?.total || 1
-          await parser.destroy()
+          pageCount = result.numpages || 1
         } catch (pdfErr) {
           console.warn('pdf-parse failed in quick-scan route, falling back to base64 inlineData upload:', pdfErr)
         }

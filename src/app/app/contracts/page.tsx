@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import { Search, FileText, AlertTriangle, Shield, Calendar, TrendingUp, Plus, Trash2, SlidersHorizontal, ChevronRight } from 'lucide-react'
+import { Search, FileText, Shield, Plus, Trash2, SlidersHorizontal, ChevronRight } from 'lucide-react'
 
 interface Contract {
   id: string

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { contracts, clauses, profiles, userPlaybook } from '@/db/schema'
+import { contracts, clauses, profiles, userPlaybook, contractDates } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import mammoth from 'mammoth'
 import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { checkUsageLimit } from '@/lib/usage'
-import { PDFParse } from 'pdf-parse'
+import pdf from 'pdf-parse'
 
 export const maxDuration = 60 // Vercel serverless timeout limit
 
@@ -84,13 +84,15 @@ const RESPONSE_SCHEMA = {
     overallRisk: { type: "INTEGER" as const },
     riskLabel: { type: "STRING" as const },
     summary: { type: "STRING" as const },
+    autoRenewalDate: { type: "STRING" as const, nullable: true },
+    expirationDate: { type: "STRING" as const, nullable: true },
   },
   required: ["clauses", "overallRisk", "riskLabel", "summary"],
 }
 
 function buildSystemInstruction(perspective: string, playbookRules: string, bespokeConstraints: string): string {
   const userPerspective = perspective || 'Neutral'
-  return `You are an elite, ruthless corporate lawyer representing the ${userPerspective}.
+  return `You are an elite, ruthless corporate lawyer representing the ${userPerspective}. You are exclusively representing the interests of the ${userPerspective}. Ignore risks that only negatively impact the counterparty. Your sole objective is to protect the ${userPerspective} from liability and financial exposure.
 CRITICAL INSTRUCTION: You must analyze this contract strictly from the perspective of the ${userPerspective}.
 Identify the top 5 to 7 most dangerous clauses that pose a liability, financial threat, or operational risk SPECIFICALLY to the ${userPerspective}.
 
@@ -124,7 +126,11 @@ For each clause, provide:
 Overall:
 - overallRisk (integer 1-10): Overall risk score.
 - riskLabel (string): 'low', 'medium', or 'high'.
-- summary (string): 3 sentences maximum.`
+- summary (string): 3 sentences maximum.
+- autoRenewalDate (string or null): Explicit auto-renewal date in YYYY-MM-DD format if explicitly stated in the contract, otherwise null.
+- expirationDate (string or null): Explicit expiration date in YYYY-MM-DD format if explicitly stated in the contract, otherwise null.
+
+CRITICAL: If a specific expiration or renewal date is NOT explicitly typed in the contract text, you MUST return \`null\` for the date fields. Do not calculate, assume, or fabricate dates under any circumstances.`
 }
 
 export async function POST(req: Request) {
@@ -161,7 +167,7 @@ export async function POST(req: Request) {
       ? bespokeConstraints
       : 'No bespoke deal constraints provided.'
 
-    const userPerspective = perspective || 'Neutral'
+    let userPerspective = perspective || 'Neutral'
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, contractId))
     if (!contract) throw new Error('Contract not found')
 
@@ -190,6 +196,9 @@ export async function POST(req: Request) {
     await db.update(contracts).set(updateFields).where(eq(contracts.id, contractId))
 
     const activeContractType = contractType || contract.contractType
+    if (activeContractType === 'oem_supply') {
+      userPerspective = 'Supplier'
+    }
     let systemInstruction = buildSystemInstruction(userPerspective, formattedPlaybookRules, formattedBespokeConstraints)
 
     if (activeContractType === 'oem_supply') {
@@ -218,12 +227,9 @@ export async function POST(req: Request) {
           let textContent = ''
           let pageCount = 1
           try {
-            const parser = new PDFParse({ data: buffer })
-            const result = await parser.getText()
+            const result = await pdf(buffer)
             textContent = result.text || ''
-            const info = await parser.getInfo().catch(() => ({ total: 1 }))
-            pageCount = info?.total || 1
-            await parser.destroy()
+            pageCount = result.numpages || 1
           } catch (pdfErr) {
             console.warn('pdf-parse failed in analyze route, falling back to base64 inlineData upload:', pdfErr)
           }
@@ -353,6 +359,32 @@ export async function POST(req: Request) {
       summary: parsedResponse.summary,
       analyzedAt: new Date()
     }).where(eq(contracts.id, contractId))
+
+    // Insert contract dates if they are successfully extracted
+    if (parsedResponse.autoRenewalDate) {
+      try {
+        await db.insert(contractDates).values({
+          contractId,
+          dateType: 'Auto-renewal notice',
+          dateValue: parsedResponse.autoRenewalDate,
+          description: 'Auto-renewal notice deadline extracted from contract text.',
+        })
+      } catch (err) {
+        console.error('Failed to insert autoRenewalDate milestone:', err)
+      }
+    }
+    if (parsedResponse.expirationDate) {
+      try {
+        await db.insert(contractDates).values({
+          contractId,
+          dateType: 'Contract expiration',
+          dateValue: parsedResponse.expirationDate,
+          description: 'Contract expiration deadline extracted from contract text.',
+        })
+      } catch (err) {
+        console.error('Failed to insert expirationDate milestone:', err)
+      }
+    }
 
     // Close the usage loop by incrementing the active user's cycle usage
     await db.update(profiles)

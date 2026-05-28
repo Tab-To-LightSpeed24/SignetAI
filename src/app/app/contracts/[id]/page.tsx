@@ -6,7 +6,6 @@ import { createBrowserClient } from '@supabase/ssr'
 import dynamic from 'next/dynamic'
 import { 
   Check, 
-  CheckCircle2, 
   AlertTriangle, 
   AlertOctagon, 
   Bell, 
@@ -51,6 +50,13 @@ interface AnalysisResult {
     contractType: string
   }
   clauses: ClauseResult[]
+  dates?: {
+    id: string
+    dateType: string
+    dateValue: string | null
+    description: string | null
+    reminderSent: boolean
+  }[]
 }
 
 
@@ -100,16 +106,13 @@ export default function ContractPage() {
 
   // Clause Interactive States
   const [flaggedClauses, setFlaggedClauses] = useState<Record<string, boolean>>({})
-  const [personalNotes, setPersonalNotes] = useState<Record<string, string>>({})
-  const [noteStatus, setNoteStatus] = useState<Record<string, 'typing' | 'saved' | ''>>({})
+  // const [personalNotes, setPersonalNotes] = useState<Record<string, string>>({})
+  // const [noteStatus, setNoteStatus] = useState<Record<string, 'typing' | 'saved' | ''>>({})
   const [resolvedClauses, setResolvedClauses] = useState<Record<string, boolean>>({})
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'flagged'>('all')
 
   // Key Dates State
-  const [datesList, setDatesList] = useState<{ id: string; type: string; value: string; daysRemaining: number; reminderActive: boolean; reminderDaysBefore: number }[]>([
-    { id: 'date-1', type: 'Auto-renewal notice', value: '15 July 2026', daysRemaining: 56, reminderActive: false, reminderDaysBefore: 30 },
-    { id: 'date-2', type: 'Contract expiration', value: '30 September 2026', daysRemaining: 132, reminderActive: false, reminderDaysBefore: 60 }
-  ])
+  const [datesList, setDatesList] = useState<{ id: string; type: string; value: string; daysRemaining: number; reminderActive: boolean; reminderDaysBefore: number }[]>([])
   const [editingReminderId, setEditingReminderId] = useState<string | null>(null)
 
   // Expert Review states
@@ -184,6 +187,7 @@ export default function ContractPage() {
     })
   }, [updateClauseInDb, showToast])
 
+  /*
   const toggleResolve = useCallback((clauseId: string) => {
     setResolvedClauses(prev => {
       const nextVal = !prev[clauseId]
@@ -200,6 +204,7 @@ export default function ContractPage() {
       setTimeout(() => setNoteStatus(prev => ({ ...prev, [clauseId]: '' })), 1500)
     })
   }, [updateClauseInDb])
+  */
 
   // Pre-fill fields on report load
   useEffect(() => {
@@ -215,16 +220,28 @@ export default function ContractPage() {
         resolved[c.id] = !!c.isResolved
       })
       setFlaggedClauses(flags)
-      setPersonalNotes(notes)
+      // setPersonalNotes(notes)
       setResolvedClauses(resolved)
 
-      // Extract dates dynamically from clauses if possible
-      const renewalClauses = result.clauses.filter(c => c.clauseType.toLowerCase().includes('renewal') || c.clauseType.toLowerCase().includes('term'))
-      if (renewalClauses.length > 0) {
-        setDatesList([
-          { id: 'date-1', type: 'Auto-renewal notice', value: '15 July 2026', daysRemaining: 56, reminderActive: false, reminderDaysBefore: 30 },
-          { id: 'date-2', type: 'Contract expiration', value: '30 September 2026', daysRemaining: 132, reminderActive: false, reminderDaysBefore: 60 }
-        ])
+      // Extract dates dynamically from backend payload if possible
+      if (result.dates && result.dates.length > 0) {
+        setDatesList(result.dates.map((d: any) => {
+          let daysRemaining = 0
+          if (d.dateValue) {
+            const diffTime = new Date(d.dateValue).getTime() - new Date().getTime()
+            daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+          }
+          return {
+            id: d.id,
+            type: d.dateType || 'Critical Deadline',
+            value: d.dateValue ? new Date(d.dateValue).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not specified',
+            daysRemaining,
+            reminderActive: !!d.reminderActive,
+            reminderDaysBefore: d.reminderDaysBefore || 30
+          }
+        }))
+      } else {
+        setDatesList([])
       }
       // Populate pre-filled lawyer message
       const highRiskNames = result.clauses.filter(c => c.riskScore >= 7).map(c => c.clauseType).join(', ')
@@ -714,75 +731,85 @@ export default function ContractPage() {
                       
                       // Create a dynamic off-screen high-contrast print layout
                       const printContainer = document.createElement('div')
-                      printContainer.style.position = 'absolute'
+                      printContainer.style.position = 'fixed'
                       printContainer.style.left = '0'
-                      printContainer.style.top = '-10000px'
+                      printContainer.style.top = '0'
                       printContainer.style.width = '800px'
-                      printContainer.style.zIndex = '99999'
+                      printContainer.style.zIndex = '-9999'
+                      printContainer.style.opacity = '0'
+                      printContainer.style.pointerEvents = 'none'
                       printContainer.style.background = '#FFFFFF'
-                      printContainer.style.color = '#2D3748'
+                      printContainer.style.color = '#1E293B'
                       
                       printContainer.innerHTML = `
-                        <div style="padding: 40px; background: #ffffff; font-family: system-ui, -apple-system, sans-serif; color: #2D3748; line-height: 1.5;">
-                          <!-- Header -->
-                          <div style="border-bottom: 2px solid #0D1B2A; padding-bottom: 16px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+                        <div style="padding: 44px; background: #FFFFFF; font-family: 'Inter', -apple-system, sans-serif; color: #1E293B; line-height: 1.6;">
+                          
+                          <!-- Premium Branded Header -->
+                          <div style="border-bottom: 2px solid #E2E8F0; padding-bottom: 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                              <h1 style="margin: 0; font-size: 28px; color: #0D1B2A; font-family: Georgia, serif; font-weight: 600; letter-spacing: -0.01em;">Signet AI</h1>
-                              <p style="margin: 4px 0 0 0; font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Contract Compliance & Risk Report</p>
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 800; color: #0F172A; letter-spacing: -0.03em;">Signet <span style="color: #6366F1;">AI</span></span>
+                              </div>
+                              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; font-family: 'Outfit', sans-serif;">Automated Contract Risk Report</p>
                             </div>
                             <div style="text-align: right;">
-                              <p style="margin: 0; font-size: 14px; color: #1A2A3A; font-weight: 700;">${contractName}</p>
-                              <p style="margin: 2px 0 0 0; font-size: 11px; color: #718096;">Generated on ${new Date().toLocaleDateString()}</p>
+                              <h2 style="margin: 0; font-size: 16px; color: #0F172A; font-weight: 700; font-family: 'Outfit', sans-serif;">${contractName}</h2>
+                              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B;">Analyzed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                             </div>
                           </div>
 
-                          <!-- Executive Summary -->
-                          <div style="background: #F8FAFC; border-left: 5px solid ${riskColor}; padding: 24px; border-radius: 8px; margin-bottom: 28px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                              <span style="font-size: 11px; font-weight: 700; padding: 4px 12px; background: ${overallRisk >= 7 ? 'rgba(226,75,74,0.12)' : overallRisk >= 4 ? 'rgba(186,117,23,0.12)' : 'rgba(99,153,34,0.12)'}; color: ${riskColor}; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.03em;">
-                                ${riskLabel(overallRisk)}
+                          <!-- Executive Summary & Overall Risk Score -->
+                          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 6px solid ${riskColor}; padding: 28px; border-radius: 16px; margin-bottom: 32px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                              <span style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; padding: 6px 14px; background: ${overallRisk >= 7 ? '#FEF2F2' : overallRisk >= 4 ? '#FEF3C7' : '#ECFDF5'}; color: ${riskColor}; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid ${overallRisk >= 7 ? '#FEE2E2' : overallRisk >= 4 ? '#FEEB8A' : '#D1FAE5'};">
+                                ${riskLabel(overallRisk).toUpperCase()} COMPLIANCE RISK
                               </span>
-                              <span style="font-size: 16px; font-weight: 700; color: #0D1B2A;">Overall Risk: <strong>${overallRisk} / 10</strong></span>
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 13px; color: #64748B; font-weight: 500;">Risk Score:</span>
+                                <span style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #0F172A;">${overallRisk} <span style="font-size: 16px; color: #64748B; font-weight: 500;">/ 10</span></span>
+                              </div>
                             </div>
-                            <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #4A5568; font-family: Georgia, serif; font-style: italic; font-weight: 500;">Executive Summary</h3>
-                            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #2D3748; font-style: italic;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #0F172A; font-family: 'Outfit', sans-serif; font-weight: 600;">Executive Summary</h3>
+                            <p style="margin: 0; font-size: 14.5px; line-height: 1.7; color: #334155; font-style: italic;">
                               &ldquo;${result?.contract.summary}&rdquo;
                             </p>
                           </div>
 
-                          <!-- Metrics Grid -->
-                          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px;">
-                            <div style="background: #F8FAFC; padding: 14px; border-radius: 8px; border: 1px solid #E2E8F0; text-align: center;">
-                              <div style="font-size: 11px; color: #718096; font-weight: 500;">Total Clauses</div>
-                              <div style="font-size: 22px; font-weight: 700; color: #0D1B2A; margin-top: 4px;">${totalClauses}</div>
+                          <!-- Key Analytics Grid -->
+                          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px;">
+                            <div style="background: #FFFFFF; padding: 16px; border-radius: 12px; border: 1px solid #E2E8F0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                              <div style="font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Total Clauses</div>
+                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #0F172A; margin-top: 6px;">${totalClauses}</div>
                             </div>
-                            <div style="background: #FFF5F5; padding: 14px; border-radius: 8px; border: 1px solid #FED7D7; text-align: center;">
-                              <div style="font-size: 11px; color: #C53030; font-weight: 500;">High Risk</div>
-                              <div style="font-size: 22px; font-weight: 700; color: #C53030; margin-top: 4px;">${activeHighRisk}</div>
+                            <div style="background: #FEF2F2; padding: 16px; border-radius: 12px; border: 1px solid #FEE2E2; text-align: center;">
+                              <div style="font-size: 11px; color: #EF4444; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">High Risk</div>
+                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #EF4444; margin-top: 6px;">${activeHighRisk}</div>
                             </div>
-                            <div style="background: #FFFAF0; padding: 14px; border-radius: 8px; border: 1px solid #FEEBC8; text-align: center;">
-                              <div style="font-size: 11px; color: #C05621; font-weight: 500;">Medium Risk</div>
-                              <div style="font-size: 22px; font-weight: 700; color: #C05621; margin-top: 4px;">${activeMediumRisk}</div>
+                            <div style="background: #FEF3C7; padding: 16px; border-radius: 12px; border: 1px solid #FDE68A; text-align: center;">
+                              <div style="font-size: 11px; color: #D97706; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Medium Risk</div>
+                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #D97706; margin-top: 6px;">${activeMediumRisk}</div>
                             </div>
-                            <div style="background: #F0FFF4; padding: 14px; border-radius: 8px; border: 1px solid #C6F6D5; text-align: center;">
-                              <div style="font-size: 11px; color: #2F855A; font-weight: 500;">Key Dates</div>
-                              <div style="font-size: 22px; font-weight: 700; color: #2F855A; margin-top: 4px;">${result?.clauses.filter(c => c.clauseType.toLowerCase().includes('renewal') || c.clauseType.toLowerCase().includes('term')).length || 0}</div>
+                            <div style="background: #ECFDF5; padding: 16px; border-radius: 12px; border: 1px solid #A7F3D0; text-align: center;">
+                              <div style="font-size: 11px; color: #059669; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Key Dates</div>
+                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #059669; margin-top: 6px;">${datesList.length}</div>
                             </div>
                           </div>
 
-                          <!-- Key Dates Section (If present) -->
+                          <!-- Timeline Milestones Section (If present) -->
                           ${datesList.length > 0 ? `
-                            <div style="margin-bottom: 32px; page-break-inside: avoid;">
-                              <h3 style="font-size: 16px; color: #0D1B2A; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; margin: 0 0 16px 0; font-family: Georgia, serif; font-weight: 500;">Timeline Milestones</h3>
-                              <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div style="margin-bottom: 36px; page-break-inside: avoid;">
+                              <h3 style="font-size: 18px; color: #0F172A; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; margin: 0 0 18px 0; font-family: 'Outfit', sans-serif; font-weight: 600;">Timeline Milestones</h3>
+                              <div style="display: flex; flex-direction: column; gap: 12px;">
                                 ${datesList.map(d => `
-                                  <div style="background: #FFFDF9; border: 1px solid #FEEBC8; border-left: 4px solid #D69E2E; padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                  <div style="background: #FFFDF9; border: 1px solid #FEF3C7; border-left: 5px solid #F59E0B; padding: 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
                                     <div>
-                                      <span style="font-size: 10px; font-weight: 700; color: #B7791F; text-transform: uppercase; letter-spacing: 0.02em;">${d.type}</span>
-                                      <div style="font-size: 14px; font-weight: 700; color: #1A2A3A; margin-top: 2px;">${d.value}</div>
+                                      <span style="font-size: 11px; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.05em;">${d.type}</span>
+                                      <div style="font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: #1E293B; margin-top: 4px;">${d.value}</div>
                                     </div>
-                                    <div style="text-align: right; font-size: 13px; color: #4A5568;">
-                                      <strong>${d.daysRemaining} days</strong> left
+                                    <div style="text-align: right;">
+                                      <span style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: ${d.daysRemaining <= 60 ? '#EF4444' : '#059669'};">${d.daysRemaining}</span>
+                                      <span style="font-size: 13px; color: #64748B; font-weight: 500;"> days remaining</span>
                                     </div>
                                   </div>
                                 `).join('')}
@@ -793,55 +820,55 @@ export default function ContractPage() {
                           <div style="page-break-after: always;"></div>
 
                           <!-- Detailed Analysis Header -->
-                          <h3 style="font-size: 18px; color: #0D1B2A; margin: 0 0 24px 0; border-bottom: 2px solid #0D1B2A; padding-bottom: 10px; font-family: Georgia, serif; font-weight: 500;">Detailed Clause Analysis</h3>
+                          <h3 style="font-size: 22px; color: #0F172A; margin: 0 0 28px 0; border-bottom: 2px solid #0F172A; padding-bottom: 12px; font-family: 'Outfit', sans-serif; font-weight: 700;">Detailed Clause Analysis</h3>
 
-                          <div style="display: flex; flex-direction: column; gap: 24px;">
+                          <div style="display: flex; flex-direction: column; gap: 28px;">
                             ${sortedClauses.map((c, idx) => `
-                              <div style="page-break-inside: avoid; border: 1px solid #E2E8F0; border-left: 5px solid ${riskBorderColor(c.riskScore)}; border-radius: 8px; padding: 20px; background: #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.01); margin-bottom: 16px;">
+                              <div style="page-break-inside: avoid; border: 1px solid #E2E8F0; border-left: 6px solid ${riskBorderColor(c.riskScore)}; border-radius: 16px; padding: 24px; background: #FFFFFF; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 20px;">
                                 <!-- Card Header -->
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                                  <h4 style="margin: 0; font-size: 15px; color: #0D1B2A; font-weight: 700;">
-                                    ${idx + 1}. ${c.clauseType} (Page ${c.pageNumber || 'N/A'})
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
+                                  <h4 style="margin: 0; font-size: 16px; color: #0F172A; font-weight: 700; font-family: 'Outfit', sans-serif;">
+                                    ${idx + 1}. ${c.clauseType} <span style="color: #64748B; font-weight: 500; font-size: 14px;">(Page ${c.pageNumber || 'N/A'})</span>
                                   </h4>
-                                  <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: ${c.riskScore >= 7 ? '#FFF5F5' : c.riskScore >= 4 ? '#FFFAF0' : '#F0FFF4'}; color: ${riskBorderColor(c.riskScore)}; border: 1px solid ${c.riskScore >= 7 ? '#FED7D7' : c.riskScore >= 4 ? '#FEEBC8' : '#C6F6D5'};">
+                                  <span style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: ${c.riskScore >= 7 ? '#FEF2F2' : c.riskScore >= 4 ? '#FEF3C7' : '#ECFDF5'}; color: ${riskBorderColor(c.riskScore)}; border: 1px solid ${c.riskScore >= 7 ? '#FEE2E2' : c.riskScore >= 4 ? '#FEEB8A' : '#D1FAE5'};">
                                     RISK: ${c.riskScore} / 10
                                   </span>
                                 </div>
 
                                 <!-- Playbook Violation Banner -->
                                 ${c.isPlaybookViolation ? `
-                                  <div style="background: #FFF5F5; border: 1px solid #FED7D7; border-left: 3px solid #E24B4A; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 12px; color: #C53030; font-weight: 600;">
-                                    ⚠️ Playbook Rule Violation Detected
+                                  <div style="background: #FEF2F2; border: 1px solid #FEE2E2; border-left: 4px solid #EF4444; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: #B91C1C; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    <span>⚠️</span> Playbook Rule Violation Detected
                                   </div>
                                 ` : ''}
 
                                 <!-- Original text -->
-                                <div style="margin-bottom: 14px;">
-                                  <div style="font-size: 10px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Original Contract Language</div>
-                                  <div style="font-size: 12px; font-family: monospace; background: #F8FAFC; border: 1px solid #EDF2F7; padding: 12px; border-radius: 6px; color: #2D3748; white-space: pre-wrap; line-height: 1.55;">
+                                <div style="margin-bottom: 18px;">
+                                  <div style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: 'Outfit', sans-serif;">Original Contract Language</div>
+                                  <div style="font-size: 12.5px; font-family: monospace; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px; color: #334155; white-space: pre-wrap; line-height: 1.6;">
                                     ${c.originalText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
                                   </div>
                                 </div>
 
                                 <!-- Plain English -->
-                                <div style="margin-bottom: 14px;">
-                                  <div style="font-size: 10px; font-weight: 700; color: #1D9E75; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Plain English Translation</div>
-                                  <p style="margin: 0; font-size: 13px; color: #2D3748; line-height: 1.5;">${c.plainEnglish}</p>
+                                <div style="margin-bottom: 18px;">
+                                  <div style="font-size: 11px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: 'Outfit', sans-serif;">Plain English Translation</div>
+                                  <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.6; font-weight: 500;">${c.plainEnglish}</p>
                                 </div>
 
                                 <!-- Risk Context -->
                                 ${c.negotiationTip ? `
-                                  <div style="margin-bottom: 14px;">
-                                    <div style="font-size: 10px; font-weight: 700; color: ${c.riskScore >= 7 ? '#E24B4A' : '#BA7517'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Why this is risky for you</div>
-                                    <p style="margin: 0; font-size: 13px; color: #4A5568; line-height: 1.5;">${c.negotiationTip}</p>
+                                  <div style="margin-bottom: 18px;">
+                                    <div style="font-size: 11px; font-weight: 700; color: ${c.riskScore >= 7 ? '#EF4444' : '#D97706'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: 'Outfit', sans-serif;">Risk Exposure Tip</div>
+                                    <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">${c.negotiationTip}</p>
                                   </div>
                                 ` : ''}
 
                                 <!-- Suggested Counter-Clause -->
-                                ${c.riskScore >= 6 && c.negotiationLanguage ? `
-                                  <div style="background: #F0FFF4; border: 1px solid #C6F6D5; border-left: 4px solid #639922; padding: 14px; border-radius: 8px; margin-top: 16px;">
-                                    <div style="font-size: 10px; font-weight: 700; color: #2F855A; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Suggested Counter-Clause (Tier-1 Standard)</div>
-                                    <div style="font-size: 12px; font-family: monospace; background: rgba(255,255,255,0.85); padding: 10px; border-radius: 4px; color: #22543D; line-height: 1.55; border: 1px dashed #C6F6D5; white-space: pre-wrap;">
+                                ${c.negotiationLanguage ? `
+                                  <div style="background: #F0FDF4; border: 1px solid #DCFCE7; border-left: 5px solid #16A34A; padding: 18px; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                                    <div style="font-size: 11px; font-weight: 700; color: #16A34A; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-family: 'Outfit', sans-serif;">Suggested Counter-Clause (Tier-1 Standard)</div>
+                                    <div style="font-size: 12.5px; font-family: monospace; background: rgba(255,255,255,0.9); padding: 12px; border-radius: 6px; color: #14532D; line-height: 1.6; border: 1px dashed #BBF7D0; white-space: pre-wrap;">
                                       ${c.negotiationLanguage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
                                     </div>
                                   </div>
@@ -854,8 +881,11 @@ export default function ContractPage() {
                       
                       document.body.appendChild(printContainer)
                       
+                      // Wait a brief tick (e.g. 250ms) to ensure full paint/layout calculations are completed in the DOM
+                      await new Promise(resolve => setTimeout(resolve, 250))
+                      
                       const opt = {
-                        margin: 12,
+                        margin: 10,
                         filename: `${contractName.replace(/\s+/g, '_')}_Risk_Report.pdf`,
                         image: { type: 'jpeg' as const, quality: 0.98 },
                         html2canvas: { scale: 2, useCORS: true, logging: false },
@@ -865,7 +895,8 @@ export default function ContractPage() {
                       await html2pdf().set(opt).from(printContainer).save()
                       document.body.removeChild(printContainer)
                       showToast('Risk report exported as PDF!', 'success')
-                    } catch (e) {
+                    } catch (err) {
+                      console.error('PDF export error:', err)
                       showToast('Failed to export PDF', 'error')
                     }
                     setIsExporting(false)
