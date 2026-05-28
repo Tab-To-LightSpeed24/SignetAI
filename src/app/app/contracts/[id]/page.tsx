@@ -103,6 +103,7 @@ export default function ContractPage() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [showKebabMenu, setShowKebabMenu] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
   // Clause Interactive States
   const [flaggedClauses, setFlaggedClauses] = useState<Record<string, boolean>>({})
@@ -485,7 +486,7 @@ export default function ContractPage() {
     <div style={{ maxWidth: '100%', padding: '24px 32px', color: '#E2E8F0', position: 'relative' }}>
       
       {/* Toast Notifications Panel */}
-      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99999, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {toasts.map(t => (
           <div 
             key={t.id} 
@@ -724,26 +725,15 @@ export default function ContractPage() {
 
                 <button 
                   onClick={async () => {
-                    setIsExporting(true)
-                    showToast('Generating B2B Export PDF...', 'info')
+                    setIsExporting(true);
+                    showToast('Generating B2B Export PDF...', 'info');
                     try {
-                      const html2pdf = (await import('html2pdf.js')).default
+                      const html2pdf = (await import('html2pdf.js')).default;
                       
-                      // Create a dynamic off-screen high-contrast print layout
-                      const printContainer = document.createElement('div')
-                      printContainer.style.position = 'fixed'
-                      printContainer.style.left = '0'
-                      printContainer.style.top = '0'
-                      printContainer.style.width = '800px'
-                      printContainer.style.zIndex = '-9999'
-                      printContainer.style.opacity = '0'
-                      printContainer.style.pointerEvents = 'none'
-                      printContainer.style.background = '#FFFFFF'
-                      printContainer.style.color = '#1E293B'
-                      
-                      printContainer.innerHTML = `
+                      // The HTML string template (Keep your exact styling)
+                      const htmlString = `
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-                        <div style="padding: 44px; background: #FFFFFF; font-family: 'Inter', -apple-system, sans-serif; color: #1E293B; line-height: 1.6;">
+                        <div style="padding: 44px; background: #FFFFFF; font-family: 'Inter', -apple-system, sans-serif; color: #1E293B; line-height: 1.6; width: 800px;">
                           
                           <!-- Premium Branded Header -->
                           <div style="border-bottom: 2px solid #E2E8F0; padding-bottom: 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
@@ -877,29 +867,25 @@ export default function ContractPage() {
                             `).join('')}
                           </div>
                         </div>
-                      `
-                      
-                      document.body.appendChild(printContainer)
-                      
-                      // Wait a brief tick (e.g. 250ms) to ensure full paint/layout calculations are completed in the DOM
-                      await new Promise(resolve => setTimeout(resolve, 250))
+                      `;
                       
                       const opt = {
                         margin: 10,
                         filename: `${contractName.replace(/\s+/g, '_')}_Risk_Report.pdf`,
                         image: { type: 'jpeg' as const, quality: 0.98 },
                         html2canvas: { scale: 2, useCORS: true, logging: false },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-                      }
+                        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+                      };
+                                            
+                      // Pass the raw HTML string directly to bypass DOM paint clipping
+                      await html2pdf().set(opt).from(htmlString).save();
                       
-                      await html2pdf().set(opt).from(printContainer).save()
-                      document.body.removeChild(printContainer)
-                      showToast('Risk report exported as PDF!', 'success')
+                      showToast('Risk report exported as PDF!', 'success');
                     } catch (err) {
-                      console.error('PDF export error:', err)
-                      showToast('Failed to export PDF', 'error')
+                      console.error('PDF export error:', err);
+                      showToast('Failed to export PDF', 'error');
                     }
-                    setIsExporting(false)
+                    setIsExporting(false);
                   }}
                   className="btn-secondary" 
                   disabled={isExporting}
@@ -1005,10 +991,8 @@ export default function ContractPage() {
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
                       <button 
                         onClick={() => {
-                          if (id && confirm('Are you sure you want to delete this contract from your library?')) {
-                            setShowKebabMenu(false)
-                            deleteContract(id)
-                          }
+                          setShowKebabMenu(false)
+                          setDeleteModalOpen(true)
                         }}
                         style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 12px', fontSize: 13, color: '#E24B4A', cursor: 'pointer' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(226,75,74,0.1)'}
@@ -1846,6 +1830,101 @@ export default function ContractPage() {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* Center Glassmorphic Delete Modal */}
+      {deleteModalOpen && id && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(10, 18, 30, 0.6)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+        }}>
+          <div style={{
+            background: 'rgba(26, 42, 62, 0.4)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 16,
+            padding: 32,
+            width: '100%',
+            maxWidth: 440,
+            boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+            textAlign: 'center',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: 'rgba(226, 75, 74, 0.15)',
+              color: '#E24B4A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto',
+              fontSize: 24,
+            }}>
+              ⚠️
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 12px 0' }}>
+              Delete Contract Audit?
+            </h3>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, margin: '0 0 28px 0' }}>
+              Are you sure you want to permanently delete the risk audit report for "{contractName}"? All clauses, flagged items, and milestones will be deleted.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  setDeleteModalOpen(false)
+                }}
+                style={{
+                  padding: '11px 24px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 8,
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setDeleteModalOpen(false)
+                  await deleteContract(id)
+                }}
+                style={{
+                  padding: '11px 24px',
+                  background: '#E24B4A',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

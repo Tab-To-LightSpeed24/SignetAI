@@ -86,6 +86,8 @@ export default function DashboardPage() {
   const [sortField, setSortField] = useState<'name' | 'created_at' | 'overall_risk'>('created_at')
   const [sortAsc, setSortAsc] = useState<boolean>(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [contractToDelete, setContractToDelete] = useState<{ id: string; name: string; isCancel?: boolean } | null>(null)
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
@@ -549,7 +551,7 @@ export default function DashboardPage() {
     <div style={{ maxWidth: '100%', padding: '32px 40px', color: '#E2E8F0', position: 'relative' }}>
       
       {/* Toast Panel */}
-      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99999, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {toasts.map(t => (
           <div 
             key={t.id} 
@@ -1103,8 +1105,9 @@ export default function DashboardPage() {
                 style={{
                   borderRadius: 12,
                   border: '1px solid rgba(255,255,255,0.08)',
-                  overflow: 'hidden',
+                  overflow: 'visible',
                   background: 'rgba(255,255,255,0.01)',
+                  minHeight: sortedContracts.length > 0 ? 200 : 'auto',
                 }}
               >
                 {/* Table Header */}
@@ -1281,10 +1284,8 @@ export default function DashboardPage() {
                                   e.stopPropagation()
                                   e.preventDefault()
                                   setOpenMenuId(null); 
-                                  if (confirm('Cancel analysis and remove this document?')) {
-                                    deleteContract(contract.id)
-                                    showToast('Analysis cancelled and document removed.', 'info')
-                                  }
+                                  setContractToDelete({ id: contract.id, name: contract.name || 'Unnamed contract', isCancel: true })
+                                  setDeleteModalOpen(true)
                                 }}
                                 style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#BA7517', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(186,117,23,0.08)'}
@@ -1313,7 +1314,8 @@ export default function DashboardPage() {
                                     e.stopPropagation()
                                     e.preventDefault()
                                     setOpenMenuId(null); 
-                                    if (confirm('Delete this contract from your library?')) deleteContract(contract.id) 
+                                    setContractToDelete({ id: contract.id, name: contract.name || 'Unnamed contract', isCancel: false })
+                                    setDeleteModalOpen(true)
                                   }}
                                   style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#E24B4A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(226,75,74,0.08)'}
@@ -1690,6 +1692,107 @@ export default function DashboardPage() {
           100% { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Center Glassmorphic Delete Modal */}
+      {deleteModalOpen && contractToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(10, 18, 30, 0.6)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+        }}>
+          <div style={{
+            background: 'rgba(26, 42, 62, 0.4)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 16,
+            padding: 32,
+            width: '100%',
+            maxWidth: 440,
+            boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+            textAlign: 'center',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: contractToDelete.isCancel ? 'rgba(186, 117, 23, 0.15)' : 'rgba(226, 75, 74, 0.15)',
+              color: contractToDelete.isCancel ? '#BA7517' : '#E24B4A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto',
+              fontSize: 24,
+            }}>
+              ⚠️
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 12px 0' }}>
+              {contractToDelete.isCancel ? 'Cancel Contract Analysis?' : 'Delete Contract Audit?'}
+            </h3>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, margin: '0 0 28px 0' }}>
+              {contractToDelete.isCancel 
+                ? `Are you sure you want to stop parsing and permanently remove "${contractToDelete.name}" from your analysis queue? This action cannot be undone.` 
+                : `Are you sure you want to permanently delete the risk audit report for "${contractToDelete.name}"? All clauses, flagged items, and milestones will be deleted.`}
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  setDeleteModalOpen(false)
+                  setContractToDelete(null)
+                }}
+                style={{
+                  padding: '11px 24px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 8,
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setDeleteModalOpen(false)
+                  if (contractToDelete) {
+                    await deleteContract(contractToDelete.id)
+                  }
+                  setContractToDelete(null)
+                }}
+                style={{
+                  padding: '11px 24px',
+                  background: contractToDelete.isCancel ? '#BA7517' : '#E24B4A',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                {contractToDelete.isCancel ? 'Stop Analysis' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

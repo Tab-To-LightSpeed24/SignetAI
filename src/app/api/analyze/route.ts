@@ -153,14 +153,30 @@ export async function POST(req: Request) {
     }
 
     // Format playbook rules if provided as list or fetch user playbook as fallback
+    let hasPlaybookRules = true
     let formattedPlaybookRules = ''
-    if (playbookRules && Array.isArray(playbookRules) && playbookRules.length > 0) {
-      formattedPlaybookRules = playbookRules.map((r, i) => `${i + 1}. ${r}`).join('\n')
-    } else if (playbookRules && typeof playbookRules === 'string' && playbookRules.trim().length > 0) {
-      formattedPlaybookRules = playbookRules
+    if (playbookRules && Array.isArray(playbookRules)) {
+      if (playbookRules.length > 0) {
+        formattedPlaybookRules = playbookRules.map((r, i) => `${i + 1}. ${r}`).join('\n')
+      } else {
+        hasPlaybookRules = false
+        formattedPlaybookRules = 'No specific rules.'
+      }
+    } else if (playbookRules && typeof playbookRules === 'string') {
+      if (playbookRules.trim().length > 0) {
+        formattedPlaybookRules = playbookRules
+      } else {
+        hasPlaybookRules = false
+        formattedPlaybookRules = 'No specific rules.'
+      }
     } else {
       const playbookRecords = await db.select().from(userPlaybook).where(eq(userPlaybook.userId, user.id))
-      formattedPlaybookRules = playbookRecords.map((r, i) => `${i + 1}. ${r.ruleText}`).join('\n') || 'No specific rules.'
+      if (playbookRecords.length === 0) {
+        hasPlaybookRules = false
+        formattedPlaybookRules = 'No specific rules.'
+      } else {
+        formattedPlaybookRules = playbookRecords.map((r, i) => `${i + 1}. ${r.ruleText}`).join('\n')
+      }
     }
 
     const formattedBespokeConstraints = bespokeConstraints && typeof bespokeConstraints === 'string' && bespokeConstraints.trim().length > 0
@@ -200,6 +216,9 @@ export async function POST(req: Request) {
       userPerspective = 'Supplier'
     }
     let systemInstruction = buildSystemInstruction(userPerspective, formattedPlaybookRules, formattedBespokeConstraints)
+    if (!hasPlaybookRules) {
+      systemInstruction += `\n\nCRITICAL: The user has NO playbook rules. You MUST set \`isPlaybookViolation: false\` for EVERY clause. Do not flag any playbook violations under any circumstances.`
+    }
 
     if (activeContractType === 'oem_supply') {
       systemInstruction += `\n\nCRITICAL AUTO OEM RISKS TO FLAG: 1. Line-Stoppage Indemnity (holding supplier liable for OEM downtime). 2. Tooling & Die IP Ownership (OEM claiming ownership of unpaid molds). 3. Unilateral Rolling Forecasts (forcing inventory holds without purchase guarantees).\n\nREDLINING DIRECTIVE: For the \`negotiationLanguage\` output, you must draft aggressive, Tier-1 standard counter-clauses. Limit indemnities to direct damages, explicitly reject consequential line-down charges, and mandate that tooling IP transfers only upon 100% payment clearance.`
@@ -349,7 +368,7 @@ export async function POST(req: Request) {
           riskLabel: c.riskScore >= 7 ? 'high' : c.riskScore >= 4 ? 'medium' : 'low',
           negotiationTip: c.recommendation || '',
           negotiationLanguage: c.negotiationLanguage || null,
-          isPlaybookViolation: c.isPlaybookViolation === true,
+          isPlaybookViolation: hasPlaybookRules ? (c.isPlaybookViolation === true) : false,
           pageNumber: c.pageNumber || null,
         }))
       )
