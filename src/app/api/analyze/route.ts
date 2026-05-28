@@ -214,24 +214,46 @@ export async function POST(req: Request) {
         const filename = contract.name.toLowerCase()
 
         if (filename.endsWith('.pdf')) {
-          const base64Data = Buffer.from(buffer).toString('base64')
+          let textContent = ''
+          try {
+            const pdf = require('pdf-parse')
+            const pdfData = await pdf(buffer)
+            textContent = pdfData.text || ''
+          } catch (pdfErr) {
+            console.warn('pdf-parse failed in analyze route, falling back to base64 inlineData upload:', pdfErr)
+          }
 
-          console.log('--- SENDING PDF TO GEMINI ---')
-          const result = await retryWithBackoff(() => ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [
-              { inlineData: { data: base64Data, mimeType: 'application/pdf' } },
-              systemInstruction,
-            ],
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: RESPONSE_SCHEMA,
-            },
-          }))
-
-          if (!result.text) throw new Error('Gemini returned empty response')
-          parsedResponse = JSON.parse(result.text)
-          console.log('--- GEMINI RAW RESPONSE ---', result.text.substring(0, 300))
+          if (textContent.trim().length > 100) {
+            console.log('--- PDF TEXT EXTRACTED SUCCESSFULLY, sending to Gemini ---', textContent.substring(0, 100))
+            const result = await retryWithBackoff(() => ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: [
+                systemInstruction + "\n\nContract text:\n" + textContent,
+              ],
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: RESPONSE_SCHEMA,
+              },
+            }))
+            if (!result.text) throw new Error('Gemini returned empty response')
+            parsedResponse = JSON.parse(result.text)
+          } else {
+            console.log('--- FALLING BACK TO DIRECT PDF BASE64 UPLOAD TO GEMINI ---')
+            const base64Data = Buffer.from(buffer).toString('base64')
+            const result = await retryWithBackoff(() => ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: [
+                { inlineData: { data: base64Data, mimeType: 'application/pdf' } },
+                systemInstruction,
+              ],
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: RESPONSE_SCHEMA,
+              },
+            }))
+            if (!result.text) throw new Error('Gemini returned empty response')
+            parsedResponse = JSON.parse(result.text)
+          }
         } else if (filename.endsWith('.docx')) {
           const textResult = await mammoth.extractRawText({ buffer })
           const textContent = textResult.value

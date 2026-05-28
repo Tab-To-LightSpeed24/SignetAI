@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { 
   AlertTriangle, 
   AlertOctagon, 
@@ -31,6 +32,10 @@ const PERSPECTIVES: Perspective[] = ['Tenant', 'Landlord', 'Buyer', 'Seller', 'N
 
 export default function DashboardPage() {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
@@ -562,7 +567,7 @@ export default function DashboardPage() {
       </div>
 
       {/* pre-flight intercept modal popup */}
-      {status === 'pre-flight' && (
+      {status === 'pre-flight' && mounted && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -886,7 +891,8 @@ export default function DashboardPage() {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* DASHBOARD - NORMAL STATE */}
@@ -1540,6 +1546,90 @@ export default function DashboardPage() {
                 fontWeight: 600, 
                 fontSize: 14,
                 boxShadow: '0 4px 14px rgba(186, 117, 23, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                transition: 'all 200ms ease',
+              }}
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ERROR STATE */}
+      {status === 'error' && (
+        <div 
+          style={{ 
+            textAlign: 'center', 
+            padding: '64px 32px', 
+            background: 'rgba(29, 10, 10, 0.4)', 
+            backdropFilter: 'blur(16px)',
+            borderRadius: 16, 
+            border: '1px solid rgba(226, 75, 74, 0.3)', 
+            maxWidth: 600, 
+            margin: '60px auto',
+            boxShadow: '0 24px 48px -12px rgba(0,0,0,0.5), 0 8px 30px rgba(226, 75, 74, 0.08), inset 0 1px 0 rgba(255,255,255,0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 20
+          }}
+        >
+          <div style={{ 
+            width: 64, 
+            height: 64, 
+            borderRadius: '50%', 
+            background: 'rgba(226, 75, 74, 0.12)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: '#E24B4A',
+            border: '1px solid rgba(226, 75, 74, 0.25)',
+            boxShadow: '0 8px 16px rgba(226, 75, 74, 0.15)'
+          }}>
+            <AlertOctagon size={32} />
+          </div>
+          
+          <div>
+            <h2 
+              className="font-display" 
+              style={{ 
+                fontSize: 26, 
+                margin: '0 0 12px', 
+                color: '#fff', 
+                fontWeight: 400, 
+                fontFamily: 'var(--font-display), serif',
+                letterSpacing: '-0.01em'
+              }}
+            >
+              Analysis Failure
+            </h2>
+            <p 
+              style={{ 
+                fontSize: 14, 
+                color: 'rgba(255, 255, 255, 0.7)', 
+                lineHeight: 1.6, 
+                maxWidth: 480, 
+                margin: '0 auto',
+                fontWeight: 400
+              }}
+            >
+              {error || 'An error occurred while launching the contract analysis. Please check your network and try again.'}
+            </p>
+          </div>
+          
+          <div style={{ marginTop: 12 }}>
+            <button
+              onClick={reset}
+              style={{
+                padding: '12px 28px', 
+                background: '#E24B4A', 
+                color: '#fff', 
+                border: 'none',
+                borderRadius: 8, 
+                cursor: 'pointer', 
+                fontWeight: 600, 
+                fontSize: 14,
+                boxShadow: '0 4px 14px rgba(226, 75, 74, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 transition: 'all 200ms ease',
               }}
             >

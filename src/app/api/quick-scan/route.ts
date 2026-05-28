@@ -163,26 +163,58 @@ Pick the recommendedPerspective that is the natural user perspective:
 
     try {
       if (filename.endsWith('.pdf')) {
-        const base64Data = Buffer.from(buffer).toString('base64')
-        const response = await retryWithBackoff(() => ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [
-            { inlineData: { data: base64Data, mimeType: 'application/pdf' } },
-            systemPrompt,
-          ],
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT" as const,
-              properties: {
-                contractType: { type: "STRING" as const },
-                recommendedPerspective: { type: "STRING" as const },
-              },
-              required: ["contractType", "recommendedPerspective"],
+        let textContent = ''
+        try {
+          const pdf = require('pdf-parse')
+          const pdfData = await pdf(buffer)
+          textContent = pdfData.text || ''
+        } catch (pdfErr) {
+          console.warn('pdf-parse failed in quick-scan route, falling back to base64 inlineData upload:', pdfErr)
+        }
+
+        if (textContent.trim().length > 100) {
+          console.log('--- PDF TEXT EXTRACTED SUCCESSFULLY IN QUICK-SCAN, sending snippet to Gemini ---')
+          const response = await retryWithBackoff(() => ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [
+              systemPrompt + "\n\nDocument Text Snippet:\n" + textContent.substring(0, 3000),
+            ],
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT" as const,
+                properties: {
+                  contractType: { type: "STRING" as const },
+                  recommendedPerspective: { type: "STRING" as const },
+                },
+                required: ["contractType", "recommendedPerspective"],
+              }
             }
-          }
-        }))
-        responseText = response.text || ''
+          }))
+          responseText = response.text || ''
+        } else {
+          console.log('--- FALLING BACK TO DIRECT PDF BASE64 UPLOAD TO GEMINI IN QUICK-SCAN ---')
+          const base64Data = Buffer.from(buffer).toString('base64')
+          const response = await retryWithBackoff(() => ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [
+              { inlineData: { data: base64Data, mimeType: 'application/pdf' } },
+              systemPrompt,
+            ],
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT" as const,
+                properties: {
+                  contractType: { type: "STRING" as const },
+                  recommendedPerspective: { type: "STRING" as const },
+                },
+                required: ["contractType", "recommendedPerspective"],
+              }
+            }
+          }))
+          responseText = response.text || ''
+        }
       } else {
         let extractedText = ''
         if (filename.endsWith('.docx')) {
