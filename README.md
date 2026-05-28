@@ -1,5 +1,6 @@
 # Signet AI — AI Contract Risk Analyzer for Indian SMEs
 
+Vercel Deployment: signetai.vercel.app
 > [!WARNING]
 > **DEVELOPMENT STATUS: UNDER ACTIVE DEVELOPMENT**  
 > This project is currently in active development. Features, database schemas, and interfaces are subject to frequent updates and iterations before final production release.
