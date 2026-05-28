@@ -6,7 +6,12 @@ export async function sendSubmissionEmail(type: 'contact' | 'partner', data: any
   const user = process.env.SMTP_USER
   const pass = process.env.SMTP_PASS
 
-  const targetEmail = 'kaushik.vgs@gmail.com'
+  // Resolve target from environment — never hardcoded
+  const targetEmail = process.env.CONTACT_EMAIL
+  if (!targetEmail) {
+    console.error('[Mailer] CONTACT_EMAIL environment variable is not set. Email routing aborted.')
+    return { success: false, reason: 'no_contact_email' }
+  }
 
   console.log(`[Mailer] Attempting to route ${type} submission to ${targetEmail}`)
 

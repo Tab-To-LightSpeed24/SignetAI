@@ -26,8 +26,7 @@ export async function GET(req: Request) {
         dateType: contractDates.dateType,
         dateValue: contractDates.dateValue,
         contractName: contracts.name,
-        userEmail: profiles.id, // we might need the actual email from auth.users or profiles if we store it
-        // Actually, we'll route to kaushik.vgs@gmail.com per instructions or use standard SMTP
+        userEmail: profiles.id, // we route reminder alerts to the central CONTACT_EMAIL inbox
       })
       .from(reminders)
       .innerJoin(contractDates, eq(reminders.contractDateId, contractDates.id))
@@ -51,7 +50,12 @@ export async function GET(req: Request) {
     const port = parseInt(process.env.SMTP_PORT || '587', 10)
     const user = process.env.SMTP_USER
     const pass = process.env.SMTP_PASS
-    const targetEmail = 'kaushik.vgs@gmail.com'
+    const targetEmail = process.env.CONTACT_EMAIL
+
+    if (!targetEmail) {
+      console.error('[Cron] CONTACT_EMAIL environment variable is not set. Skipping SMTP dispatch.')
+      return NextResponse.json({ error: true, message: 'CONTACT_EMAIL not configured' }, { status: 500 })
+    }
 
     if (!host || !user || !pass) {
       console.warn(`[Cron] SMTP is unconfigured. Simulated sending ${activeReminders.length} reminders.`)
