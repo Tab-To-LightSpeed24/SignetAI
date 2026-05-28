@@ -680,6 +680,7 @@ export default function DashboardPage() {
                     <option value="vendor" style={{ background: '#0D1B2A', color: '#fff' }}>Vendor / Supply Agreement</option>
                     <option value="service" style={{ background: '#0D1B2A', color: '#fff' }}>Service Level Agreement (SLA) / Consulting</option>
                     <option value="global" style={{ background: '#0D1B2A', color: '#fff' }}>Global / General Contract</option>
+                    <option value="invalid" style={{ background: '#0D1B2A', color: '#fff' }}>Invalid / Non-Contract Document</option>
                   </select>
                   <div style={{
                     position: 'absolute',

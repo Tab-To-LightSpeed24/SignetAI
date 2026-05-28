@@ -48,10 +48,13 @@ export default function PdfViewerPane({
       </div>
 
       {/* Document Area */}
-      <div style={{
-        flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: 20, background: '#0a0a14', gap: 20
-      }}>
+      <div 
+        id="pdf-scroll-container"
+        style={{
+          flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: 20, background: '#0a0a14', gap: 20
+        }}
+      >
         {pdfFile ? (
           <Document 
             file={pdfFile} 

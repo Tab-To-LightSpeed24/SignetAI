@@ -97,6 +97,8 @@ If a clause heavily benefits the ${userPerspective}, DO NOT flag it as a risk.
 
 If the perspective is 'Neutral', flag risks for both sides equally.
 
+CRITICAL: DO NOT HALLUCINATE DATES OR CLAUSES. If an expiration date, renewal notice, or specific risk clause is not explicitly written in the provided text, you MUST return null for those JSON fields. Do not guess or extrapolate dates.
+
 CRITICAL INSTRUCTIONS: 
 1. If a clause scores 7 or higher, you MUST generate formal, business-friendly replacement contract language in the negotiationLanguage field, along with a 1-sentence business justification for the change in the recommendation field. 
 
@@ -164,6 +166,19 @@ export async function POST(req: Request) {
 
     if (contract.userId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // GIGO Trapdoor: If it's classified as invalid, abort immediately, mark status as error, and return 400
+    if (contractType === 'invalid' || contract.contractType === 'invalid') {
+      await db.update(contracts).set({
+        status: 'error',
+        summary: 'invalid_document',
+      }).where(eq(contracts.id, contractId))
+
+      return NextResponse.json(
+        { error: 'invalid_document', message: 'This document does not appear to be a B2B contract.' },
+        { status: 400 }
+      )
     }
 
     // Set status to analyzing and update contractType if provided

@@ -59,6 +59,10 @@ async function retryWithBackoff<T>(
 function classifyContractByContent(filename: string, textSnippet = ''): { contractType: string, recommendedPerspective: 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral' | 'Supplier' } {
   const combined = (filename + ' ' + textSnippet).toLowerCase()
   const cleanText = combined.replace(/[_\-\.\/]/g, ' ')
+
+  if (/\b(manual|user guide|handbook|receipt|procedural|informational|tutorial|instruction|gazette|policy|faq|documentation|guidelines|guideline|manifesto|logbook)\b/i.test(cleanText)) {
+    return { contractType: 'invalid', recommendedPerspective: 'Neutral' }
+  }
   
   if (/\b(nda|confidentiality|non-disclosure|disclosure)\b/i.test(cleanText)) {
     return { contractType: 'nda', recommendedPerspective: 'Neutral' }
@@ -132,7 +136,7 @@ export async function POST(req: Request) {
     const systemPrompt = `You are a legal document classifier.
 Analyze the provided contract document and return a JSON object matching this schema:
 {
-  "contractType": "lease" | "nda" | "vendor" | "service" | "global" | "oem_supply",
+  "contractType": "lease" | "nda" | "vendor" | "service" | "global" | "oem_supply" | "invalid",
   "recommendedPerspective": "Tenant" | "Landlord" | "Buyer" | "Seller" | "Neutral" | "Supplier"
 }
 
@@ -142,7 +146,8 @@ Pick the contractType that fits best:
 - "vendor" for supply, distribution, purchase, or vendor agreements.
 - "service" for service level agreements, consulting, master service agreements, or employment.
 - "oem_supply" for automotive, OEM, component, tooling, line-stoppage, manufacturing supply agreements.
-- "global" if it doesn't clearly fit or is generic.
+- "global" if it fits a standard contract or is generic.
+- "invalid" if the document is a manual, receipt, procedural guide, government gazette, or purely informational text lacking binding agreement signatures or mutual covenants between two parties.
 
 Pick the recommendedPerspective that is the natural user perspective:
 - "Tenant" for lease/rentals where the user is the lessee.
@@ -150,7 +155,7 @@ Pick the recommendedPerspective that is the natural user perspective:
 - "Buyer" for purchase/procurement where the user buys.
 - "Seller" for supplier/sales where the user sells.
 - "Supplier" for oem/supply agreements where the user supplies parts or components.
-- "Neutral" if it's mutual or balanced (e.g. NDA, joint venture).`
+- "Neutral" if it's mutual or balanced (e.g. NDA, joint venture, or invalid documents).`
 
     let responseText = ''
     let fallback = false

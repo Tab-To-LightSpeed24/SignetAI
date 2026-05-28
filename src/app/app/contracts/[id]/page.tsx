@@ -436,8 +436,16 @@ export default function ContractPage() {
 
   const scrollToPdfPage = useCallback((pageNumber: number | null | undefined) => {
     if (!pageNumber) return
+    const container = document.getElementById('pdf-scroll-container')
     const el = document.getElementById(`pdf-page-${pageNumber}`)
-    if (el) {
+    if (container && el) {
+      const offsetTop = el.offsetTop - container.offsetTop - 10
+      container.scrollTo({
+        top: offsetTop >= 0 ? offsetTop : 0,
+        behavior: 'smooth'
+      })
+      showToast(`Scrolled to Page ${pageNumber} in document`, 'info')
+    } else if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
       showToast(`Scrolled to Page ${pageNumber} in document`, 'info')
     }
@@ -510,21 +518,42 @@ export default function ContractPage() {
 
       {/* ERROR STATE */}
       {status === 'error' && (
-        <div style={{ textAlign: 'center', padding: '60px 24px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '40px auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', color: '#E24B4A', marginBottom: 16 }}>
-            <AlertOctagon size={48} />
-          </div>
-          <h2 className="font-display" style={{ fontSize: 24, margin: '0 0 12px', color: '#fff', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>Analysis Failure</h2>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 24, lineHeight: 1.6 }}>
-            {error || 'An error occurred while loading this contract analysis.'}
-          </p>
-          <button 
-            onClick={() => router.push('/app/dashboard')}
-            className="btn-primary"
-            style={{ padding: '10px 20px', fontSize: 13 }}
-          >
-            Go Back
-          </button>
+        <div style={{ textAlign: 'center', padding: '60px 24px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '40px auto', boxSizing: 'border-box' }}>
+          {error === 'invalid_document' ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', color: '#BA7517', marginBottom: 16 }}>
+                <AlertTriangle size={48} />
+              </div>
+              <h2 className="font-display" style={{ fontSize: 24, margin: '0 0 12px', color: '#fff', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>Document Not Recognized</h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 24, lineHeight: 1.6 }}>
+                This file appears to be a manual or informational guide, not a legally binding agreement. Your scan credit has been refunded.
+              </p>
+              <button 
+                onClick={() => router.push('/app/dashboard')}
+                className="btn-primary"
+                style={{ padding: '10px 24px', fontSize: 13, background: '#1D9E75' }}
+              >
+                Upload New Contract
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', color: '#E24B4A', marginBottom: 16 }}>
+                <AlertOctagon size={48} />
+              </div>
+              <h2 className="font-display" style={{ fontSize: 24, margin: '0 0 12px', color: '#fff', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>Analysis Failure</h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 24, lineHeight: 1.6 }}>
+                {error || 'An error occurred while loading this contract analysis.'}
+              </p>
+              <button 
+                onClick={() => router.push('/app/dashboard')}
+                className="btn-primary"
+                style={{ padding: '10px 20px', fontSize: 13 }}
+              >
+                Go Back
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -625,11 +654,26 @@ export default function ContractPage() {
                   <h2 
                     onClick={() => setIsEditingName(true)}
                     className="font-display" 
-                    style={{ fontSize: 20, margin: 0, color: '#fff', fontWeight: 400, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-display), serif' }}
+                    style={{ 
+                      fontSize: 20, 
+                      margin: 0, 
+                      color: '#fff', 
+                      fontWeight: 400, 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 8, 
+                      overflow: 'hidden', 
+                      fontFamily: 'var(--font-display), serif',
+                      minWidth: 0,
+                      flex: 1
+                    }}
                     title="Click to edit name"
                   >
-                    {contractName}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2">
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {contractName}
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" style={{ flexShrink: 0 }}>
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
@@ -949,17 +993,18 @@ export default function ContractPage() {
 
             {/* SECTION A: EXECUTIVE SUMMARY CARD & STUNNING CIRCULAR RISK GAUGE */}
             <div style={{
-              padding: '20px 24px',
-              marginBottom: 16,
+              padding: '24px',
+              marginBottom: 20,
               borderRadius: '12px',
               background: 'rgba(255, 255, 255, 0.03)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
-              boxShadow: '0 2px 16px rgba(0,0,0,0.2)',
-              borderTop: '1px solid rgba(255, 255, 255, 0.07)',
-              borderRight: '1px solid rgba(255, 255, 255, 0.07)',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
-              borderLeft: `4px solid ${riskColor}`
+              boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+              borderLeft: `4px solid ${riskColor}`,
+              boxSizing: 'border-box'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                 
@@ -1054,8 +1099,9 @@ export default function ContractPage() {
               background: 'rgba(186,117,23,0.06)',
               border: '1px solid rgba(186,117,23,0.18)',
               borderRadius: '12px',
-              padding: '16px 20px',
-              marginBottom: 16
+              padding: '20px',
+              marginBottom: 20,
+              boxSizing: 'border-box'
             }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#BA7517', display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 12px 0' }}>
                 <Bell size={15} /> Key dates found in this contract
@@ -1168,8 +1214,9 @@ export default function ContractPage() {
                 background: 'rgba(226,75,74,0.06)',
                 border: '1px solid rgba(226,75,74,0.18)',
                 borderRadius: '12px',
-                padding: '16px 20px',
-                marginBottom: 16
+                padding: '20px',
+                marginBottom: 20,
+                boxSizing: 'border-box'
               }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: '#E24B4A', display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 12px 0' }}>
                   <AlertTriangle size={15} /> Playbook alert: {playbookViolations.length} items require attention
@@ -1235,12 +1282,13 @@ export default function ContractPage() {
             <div id="clause-breakdown-section" style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 12,
+              gap: 16,
               marginBottom: 20,
-              padding: '20px',
+              padding: '24px',
               borderRadius: '12px',
               background: 'rgba(255,255,255,0.015)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              boxSizing: 'border-box'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="font-display" style={{ fontSize: 18, margin: 0, fontWeight: 400, color: '#fff', fontFamily: 'var(--font-display), serif' }}>Clause Breakdown</h3>
