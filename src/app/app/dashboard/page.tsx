@@ -85,7 +85,7 @@ export default function DashboardPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [sortField, setSortField] = useState<'name' | 'created_at' | 'overall_risk'>('created_at')
   const [sortAsc, setSortAsc] = useState<boolean>(false)
-  const [activeKebabId, setActiveKebabId] = useState<string | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
@@ -144,7 +144,13 @@ export default function DashboardPage() {
   }, [fetchDashboardData, fetchPlaybookRules])
 
   useEffect(() => {
-    const handleClickOutside = () => setActiveKebabId(null)
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('[id^="kebab-"]') || target.closest('[style*="position: absolute"]')) {
+        return
+      }
+      setOpenMenuId(null)
+    }
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
@@ -687,7 +693,6 @@ export default function DashboardPage() {
                     <option value="oem_supply" style={{ background: '#0D1B2A', color: '#fff' }}>Automotive OEM / Manufacturing Supply Agreement</option>
                     <option value="service" style={{ background: '#0D1B2A', color: '#fff' }}>Service Level Agreement (SLA) / Consulting</option>
                     <option value="global" style={{ background: '#0D1B2A', color: '#fff' }}>Global / General Contract</option>
-                    <option value="invalid" style={{ background: '#0D1B2A', color: '#fff' }}>Invalid / Non-Contract Document</option>
                   </select>
                   <div style={{
                     position: 'absolute',
@@ -1150,7 +1155,7 @@ export default function DashboardPage() {
                   const uploadDate = contractCreatedAt
                     ? new Date(contractCreatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—'
-                  const isKebabOpen = activeKebabId === contract.id
+                  const isKebabOpen = openMenuId === contract.id
                   const statusLabel = contract.status === 'done' ? 'Complete'
                     : contract.status === 'analyzing' ? 'Analysing'
                     : contract.status === 'error' ? 'Error'
@@ -1171,6 +1176,8 @@ export default function DashboardPage() {
                         borderBottom: idx < Math.min(sortedContracts.length, 3) - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
                         alignItems: 'center',
                         transition: 'background 150ms ease',
+                        position: 'relative',
+                        zIndex: isKebabOpen ? 100 : 1,
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1222,7 +1229,8 @@ export default function DashboardPage() {
                           id={`kebab-${contract.id}`}
                           onClick={e => {
                             e.stopPropagation()
-                            setActiveKebabId(isKebabOpen ? null : contract.id)
+                            e.preventDefault()
+                            setOpenMenuId(isKebabOpen ? null : contract.id)
                           }}
                           style={{
                             background: 'none',
@@ -1248,26 +1256,31 @@ export default function DashboardPage() {
 
                         {isKebabOpen && (
                           <div
-                            onClick={e => e.stopPropagation()}
+                            onClick={e => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                            }}
                             style={{
                               position: 'absolute',
                               top: 28,
                               right: 0,
-                              width: 168,
+                              width: 180,
                               background: '#1A2A3A',
-                              border: '1px solid rgba(255,255,255,0.12)',
+                              border: '1px solid rgba(255,255,255,0.15)',
                               borderRadius: 8,
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                              zIndex: 50,
-                              padding: '4px 0',
+                              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                              zIndex: 9999,
+                              padding: '6px 0',
                               display: 'flex',
                               flexDirection: 'column',
                             }}
                           >
                             {(contract.status === 'pending' || contract.status === 'analyzing' || contract.status === 'pending_capacity') ? (
                               <button
-                                onClick={() => { 
-                                  setActiveKebabId(null); 
+                                onClick={(e) => { 
+                                  e.stopPropagation()
+                                  e.preventDefault()
+                                  setOpenMenuId(null); 
                                   if (confirm('Cancel analysis and remove this document?')) {
                                     deleteContract(contract.id)
                                     showToast('Analysis cancelled and document removed.', 'info')
@@ -1282,7 +1295,12 @@ export default function DashboardPage() {
                             ) : (
                               <>
                                 <button
-                                  onClick={() => { setActiveKebabId(null); router.push(`/app/contracts/${contract.id}`) }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    setOpenMenuId(null); 
+                                    router.push(`/app/contracts/${contract.id}`) 
+                                  }}
                                   style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -1291,7 +1309,12 @@ export default function DashboardPage() {
                                 </button>
                                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', margin: '3px 0' }} />
                                 <button
-                                  onClick={() => { setActiveKebabId(null); if (confirm('Delete this contract from your library?')) deleteContract(contract.id) }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    setOpenMenuId(null); 
+                                    if (confirm('Delete this contract from your library?')) deleteContract(contract.id) 
+                                  }}
                                   style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#E24B4A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(226,75,74,0.08)'}
                                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}

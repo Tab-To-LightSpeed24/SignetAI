@@ -84,8 +84,8 @@ const RESPONSE_SCHEMA = {
     overallRisk: { type: "INTEGER" as const },
     riskLabel: { type: "STRING" as const },
     summary: { type: "STRING" as const },
-    autoRenewalDate: { type: "STRING" as const, nullable: true },
-    expirationDate: { type: "STRING" as const, nullable: true },
+    autoRenewalDate: { type: "STRING" as const },
+    expirationDate: { type: "STRING" as const },
   },
   required: ["clauses", "overallRisk", "riskLabel", "summary"],
 }
@@ -100,7 +100,7 @@ If a clause heavily benefits the ${userPerspective}, DO NOT flag it as a risk.
 
 If the perspective is 'Neutral', flag risks for both sides equally.
 
-CRITICAL: DO NOT HALLUCINATE DATES OR CLAUSES. If an expiration date, renewal notice, or specific risk clause is not explicitly written in the provided text, you MUST return null for those JSON fields. Do not guess or extrapolate dates.
+CRITICAL: DO NOT HALLUCINATE DATES OR CLAUSES. If an expiration date, renewal notice, or specific risk clause is not explicitly written in the provided text, you MUST return an empty string "" for those JSON fields. Do not guess or extrapolate dates.
 
 CRITICAL INSTRUCTIONS: 
 1. If a clause scores 7 or higher, you MUST generate formal, business-friendly replacement contract language in the negotiationLanguage field, along with a 1-sentence business justification for the change in the recommendation field. 
@@ -127,10 +127,10 @@ Overall:
 - overallRisk (integer 1-10): Overall risk score.
 - riskLabel (string): 'low', 'medium', or 'high'.
 - summary (string): 3 sentences maximum.
-- autoRenewalDate (string or null): Explicit auto-renewal date in YYYY-MM-DD format if explicitly stated in the contract, otherwise null.
-- expirationDate (string or null): Explicit expiration date in YYYY-MM-DD format if explicitly stated in the contract, otherwise null.
+- autoRenewalDate (string): Explicit auto-renewal date in YYYY-MM-DD format if explicitly stated in the contract, otherwise empty string "".
+- expirationDate (string): Explicit expiration date in YYYY-MM-DD format if explicitly stated in the contract, otherwise empty string "".
 
-CRITICAL: If a specific expiration or renewal date is NOT explicitly typed in the contract text, you MUST return \`null\` for the date fields. Do not calculate, assume, or fabricate dates under any circumstances.`
+CRITICAL: If a specific expiration or renewal date is NOT explicitly typed in the contract text, you MUST return an empty string "" for the date fields. Do not calculate, assume, or fabricate dates under any circumstances. DO NOT hallucinate.`
 }
 
 export async function POST(req: Request) {
@@ -307,7 +307,11 @@ export async function POST(req: Request) {
         throw new Error('Supabase URL not configured — cannot download file.')
       }
     } catch (geminiError: any) {
-      console.error('Error during Gemini analysis:', geminiError)
+      console.error('Error during Gemini analysis:', {
+        message: geminiError?.message,
+        status: geminiError?.status,
+        error: geminiError
+      })
       const is503Or429 = geminiError.status === 503 || 
                          geminiError.code === 503 || 
                          geminiError.status === 429 || 
@@ -360,8 +364,8 @@ export async function POST(req: Request) {
       analyzedAt: new Date()
     }).where(eq(contracts.id, contractId))
 
-    // Insert contract dates if they are successfully extracted
-    if (parsedResponse.autoRenewalDate) {
+    // Insert contract dates if they are successfully extracted and not empty
+    if (parsedResponse.autoRenewalDate && parsedResponse.autoRenewalDate.trim() !== "") {
       try {
         await db.insert(contractDates).values({
           contractId,
@@ -373,7 +377,7 @@ export async function POST(req: Request) {
         console.error('Failed to insert autoRenewalDate milestone:', err)
       }
     }
-    if (parsedResponse.expirationDate) {
+    if (parsedResponse.expirationDate && parsedResponse.expirationDate.trim() !== "") {
       try {
         await db.insert(contractDates).values({
           contractId,
