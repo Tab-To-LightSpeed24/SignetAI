@@ -6,7 +6,6 @@ import mammoth from 'mammoth'
 import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import pdf from 'pdf-parse'
 
 function getSupabaseStorage() {
   const cookieStore = cookies()
@@ -167,6 +166,7 @@ Pick the recommendedPerspective that is the natural user perspective:
         let textContent = ''
         let pageCount = 1
         try {
+          const pdf = (await import('pdf-parse')).default
           const result = await pdf(buffer)
           textContent = result.text || ''
           pageCount = result.numpages || 1

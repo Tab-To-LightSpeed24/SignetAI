@@ -7,7 +7,6 @@ import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { checkUsageLimit } from '@/lib/usage'
-import pdf from 'pdf-parse'
 
 export const maxDuration = 60 // Vercel serverless timeout limit
 
@@ -246,6 +245,7 @@ export async function POST(req: Request) {
           let textContent = ''
           let pageCount = 1
           try {
+            const pdf = (await import('pdf-parse')).default
             const result = await pdf(buffer)
             textContent = result.text || ''
             pageCount = result.numpages || 1
