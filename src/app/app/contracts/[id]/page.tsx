@@ -626,9 +626,10 @@ export default function ContractPage() {
               alignItems: 'center',
               justifyContent: 'space-between',
               boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+              minWidth: 0,
             }}>
               {/* Left side: Contract Name (Editable Inline) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, overflow: 'hidden', minWidth: 0 }}>
                 {isEditingName ? (
                   <input
                     type="text"

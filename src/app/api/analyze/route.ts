@@ -7,6 +7,7 @@ import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { checkUsageLimit } from '@/lib/usage'
+import { PDFParse } from 'pdf-parse'
 
 export const maxDuration = 60 // Vercel serverless timeout limit
 
@@ -215,15 +216,20 @@ export async function POST(req: Request) {
 
         if (filename.endsWith('.pdf')) {
           let textContent = ''
+          let pageCount = 1
           try {
-            const pdf = require('pdf-parse')
-            const pdfData = await pdf(buffer)
-            textContent = pdfData.text || ''
+            const parser = new PDFParse({ data: buffer })
+            const result = await parser.getText()
+            textContent = result.text || ''
+            const info = await parser.getInfo().catch(() => ({ total: 1 }))
+            pageCount = info?.total || 1
+            await parser.destroy()
           } catch (pdfErr) {
             console.warn('pdf-parse failed in analyze route, falling back to base64 inlineData upload:', pdfErr)
           }
 
-          if (textContent.trim().length > 100) {
+          const minTextLength = Math.max(1000, pageCount * 150)
+          if (textContent.trim().length > minTextLength) {
             console.log('--- PDF TEXT EXTRACTED SUCCESSFULLY, sending to Gemini ---', textContent.substring(0, 100))
             const result = await retryWithBackoff(() => ai.models.generateContent({
               model: 'gemini-2.5-flash',

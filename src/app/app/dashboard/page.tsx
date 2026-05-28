@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 
 type Status = 'idle' | 'uploading' | 'quick-scanning' | 'pre-flight' | 'analyzing' | 'error' | 'exhausted' | 'verifying' | 'capacity_exceeded'
-type Perspective = 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral'
+type Perspective = 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral' | 'Supplier'
 
 interface PlaybookRule {
   id: string
@@ -28,7 +28,7 @@ interface PlaybookRule {
   contractType: string
 }
 
-const PERSPECTIVES: Perspective[] = ['Tenant', 'Landlord', 'Buyer', 'Seller', 'Neutral']
+const PERSPECTIVES: Perspective[] = ['Tenant', 'Landlord', 'Buyer', 'Seller', 'Neutral', 'Supplier']
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -683,6 +683,7 @@ export default function DashboardPage() {
                     <option value="nda" style={{ background: '#0D1B2A', color: '#fff' }}>Non-Disclosure Agreement (NDA)</option>
                     <option value="lease" style={{ background: '#0D1B2A', color: '#fff' }}>Lease / Rental Agreement</option>
                     <option value="vendor" style={{ background: '#0D1B2A', color: '#fff' }}>Vendor / Supply Agreement</option>
+                    <option value="oem_supply" style={{ background: '#0D1B2A', color: '#fff' }}>Automotive OEM / Manufacturing Supply Agreement</option>
                     <option value="service" style={{ background: '#0D1B2A', color: '#fff' }}>Service Level Agreement (SLA) / Consulting</option>
                     <option value="global" style={{ background: '#0D1B2A', color: '#fff' }}>Global / General Contract</option>
                     <option value="invalid" style={{ background: '#0D1B2A', color: '#fff' }}>Invalid / Non-Contract Document</option>
