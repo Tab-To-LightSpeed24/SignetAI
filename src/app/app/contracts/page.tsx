@@ -89,10 +89,14 @@ export default function ContractsPage() {
     if (!confirm('Are you sure you want to delete this contract from your library?')) return
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { error } = await supabase
         .from('contracts')
         .delete()
         .eq('id', id)
+        .eq('user_id', user.id)
       if (error) throw error
       setContracts(prev => prev.filter(c => c.id !== id))
     } catch (err) {

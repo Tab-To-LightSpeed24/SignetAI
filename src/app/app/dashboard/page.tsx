@@ -103,6 +103,7 @@ export default function DashboardPage() {
       const { data: contractsData } = await supabase
         .from('contracts')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (contractsData) {
@@ -230,10 +231,14 @@ export default function DashboardPage() {
 
   const deleteContract = useCallback(async (contractId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { error } = await supabase
         .from('contracts')
         .delete()
         .eq('id', contractId)
+        .eq('user_id', user.id)
       if (error) throw error
       showToast('Contract deleted successfully.', 'success')
       fetchDashboardData()

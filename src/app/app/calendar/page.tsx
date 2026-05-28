@@ -68,6 +68,7 @@ export default function CalendarPage() {
         const { data: userContracts } = await supabase
           .from('contracts')
           .select('id, name')
+          .eq('user_id', user.id)
           .eq('status', 'done')
           .order('name', { ascending: true })
         
