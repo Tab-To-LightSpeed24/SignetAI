@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import { Search, FileText, AlertTriangle, Shield, Calendar, TrendingUp, Plus, Trash2, SlidersHorizontal, ChevronRight } from 'lucide-react'
 
 interface Contract {
   id: string
@@ -29,6 +30,7 @@ export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [apiSearchQuery, setApiSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'created_at' | 'overall_risk' | 'name'>('created_at')
   const [sortAsc, setSortAsc] = useState(false)
@@ -41,31 +43,46 @@ export default function ContractsPage() {
     []
   )
 
-  const fetchContracts = useCallback(async () => {
+  // Fetch contracts from the unified search API (which handles full-text clauses automatically)
+  const fetchContracts = useCallback(async (query: string = '') => {
     try {
       setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
 
-      const { data, error } = await supabase
-        .from('contracts')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const url = query 
+        ? `/api/contracts/search?q=${encodeURIComponent(query)}`
+        : '/api/contracts/search'
 
-      if (error) throw error
-      if (data) {
-        setContracts(data)
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      if (!res.ok) throw new Error('Search failed')
+      
+      const data = await res.json()
+      if (data.success && data.contracts) {
+        setContracts(data.contracts)
       }
     } catch (err) {
-      console.error('Error loading contracts:', err)
+      console.error('Error fetching contracts:', err)
     } finally {
       setLoading(false)
     }
   }, [supabase])
 
+  // Debounce API Search
   useEffect(() => {
-    fetchContracts()
-  }, [fetchContracts])
+    const delayDebounceFn = setTimeout(() => {
+      setApiSearchQuery(searchQuery)
+    }, 350) // 350ms debounce
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchQuery])
+
+  // Refetch when the debounced search changes
+  useEffect(() => {
+    fetchContracts(apiSearchQuery)
+  }, [apiSearchQuery, fetchContracts])
 
   const deleteContract = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -83,18 +100,15 @@ export default function ContractsPage() {
     }
   }
 
-  // Filter and Sort logic
+  // Local filtering and sorting (on top of the API results)
   const processedContracts = useMemo(() => {
-    return contracts
+    return [...contracts]
       .filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                              (c.contract_type || '').toLowerCase().includes(searchQuery.toLowerCase())
-        
-        if (filterType === 'all') return matchesSearch
-        if (filterType === 'high') return matchesSearch && (c.overall_risk ?? 0) >= 7
-        if (filterType === 'medium') return matchesSearch && (c.overall_risk ?? 0) >= 4 && (c.overall_risk ?? 0) < 7
-        if (filterType === 'low') return matchesSearch && (c.overall_risk ?? 0) < 4 && (c.overall_risk ?? 0) > 0
-        return matchesSearch
+        if (filterType === 'all') return true
+        if (filterType === 'high') return (c.overall_risk ?? 0) >= 7
+        if (filterType === 'medium') return (c.overall_risk ?? 0) >= 4 && (c.overall_risk ?? 0) < 7
+        if (filterType === 'low') return (c.overall_risk ?? 0) < 4 && (c.overall_risk ?? 0) > 0
+        return true
       })
       .sort((a, b) => {
         let valA: any = a[sortBy]
@@ -115,7 +129,7 @@ export default function ContractsPage() {
         if (valA > valB) return sortAsc ? 1 : -1
         return 0
       })
-  }, [contracts, searchQuery, filterType, sortBy, sortAsc])
+  }, [contracts, filterType, sortBy, sortAsc])
 
   const toggleSort = (field: 'created_at' | 'overall_risk' | 'name') => {
     if (sortBy === field) {
@@ -126,59 +140,106 @@ export default function ContractsPage() {
     }
   }
 
+  // Risk Counters
+  const highRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) >= 7).length, [contracts])
+  const mediumRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) >= 4 && (c.overall_risk ?? 0) < 7).length, [contracts])
+  const lowRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) < 4 && (c.overall_risk ?? 0) > 0).length, [contracts])
+
   return (
-    <div style={{ maxWidth: '100%', padding: '32px 40px', color: '#E2E8F0' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 40px', color: '#E2E8F0' }}>
       
-      {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+      {/* ─── Dashboard Stats Overview Cards ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Total Contracts <FileText size={14} color="rgba(255,255,255,0.3)" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', marginTop: 8 }}>{contracts.length}</div>
+        </div>
+        <div style={{ background: 'rgba(226,75,74,0.03)', padding: '16px 20px', borderRadius: 12, border: '1px solid rgba(226,75,74,0.15)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#E24B4A', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            High Risk <Shield size={14} color="#E24B4A" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#E24B4A', marginTop: 8 }}>{highRiskCount}</div>
+        </div>
+        <div style={{ background: 'rgba(186,117,23,0.03)', padding: '16px 20px', borderRadius: 12, border: '1px solid rgba(186,117,23,0.15)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#BA7517', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Medium Risk <SlidersHorizontal size={14} color="#BA7517" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#BA7517', marginTop: 8 }}>{mediumRiskCount}</div>
+        </div>
+        <div style={{ background: 'rgba(99,153,34,0.03)', padding: '16px 20px', borderRadius: 12, border: '1px solid rgba(99,153,34,0.15)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#639922', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Low Risk <Plus size={14} color="#639922" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#639922', marginTop: 8 }}>{lowRiskCount}</div>
+        </div>
+      </div>
+
+      {/* Page Title & Analysis Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h1 className="font-display" style={{ fontSize: 30, color: '#fff', margin: '0 0 6px 0', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>
-            My Contracts
+          <h1 className="font-display" style={{ fontSize: 28, color: '#fff', margin: '0 0 6px 0', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>
+            Contracts Library & Intelligent Search
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-            Manage and view risk profiles of all your uploaded legal agreements.
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+            Search across full contract agreements, clause texts, and plain English meaning constraints in one unified vault.
           </p>
         </div>
         <button
-          onClick={() => router.push('/app')}
+          onClick={() => router.push('/app/dashboard')}
           className="btn-primary"
-          style={{ padding: '10px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+          style={{ padding: '10px 18px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Analyse New
+          <Plus size={15} /> Analyse New
         </button>
       </div>
 
-      {/* Filter and Search Bar Row */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Search */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 8, padding: '8px 14px', flex: 1, minWidth: 260
-        }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by contract name or type..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{ background: 'none', border: 'none', outline: 'none', fontSize: 13, color: '#fff', width: '100%' }}
-          />
-        </div>
+      {/* Intelligent Search Input */}
+      <div style={{ 
+        background: 'rgba(255,255,255,0.03)', 
+        border: '1px solid rgba(255,255,255,0.08)', 
+        borderRadius: 12, 
+        padding: '16px 20px',
+        marginBottom: 28,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12
+      }}>
+        <Search size={18} color="rgba(255,255,255,0.4)" />
+        <input 
+          type="text" 
+          placeholder="Search by contract name, clause text, plain English meaning, or keywords..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{ 
+            flex: 1, 
+            background: 'none', 
+            border: 'none', 
+            color: '#fff', 
+            fontSize: 14.5,
+            outline: 'none',
+            fontFamily: 'var(--font-body), system-ui, sans-serif'
+          }}
+        />
+        {searchQuery && (
+          <button 
+            onClick={() => setSearchQuery('')}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 12, cursor: 'pointer' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
 
-        {/* Filters */}
+      {/* Filter and Sort Pills */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[
-            { id: 'all', label: 'All Tiers' },
+            { id: 'all', label: 'All Contracts' },
             { id: 'high', label: 'High Risk', dotColor: '#E24B4A' },
             { id: 'medium', label: 'Medium Risk', dotColor: '#BA7517' },
-            { id: 'low', label: 'Low Risk', dotColor: '#1D9E75' }
+            { id: 'low', label: 'Low Risk', dotColor: '#639922' }
           ].map(tier => (
             <button
               key={tier.id}
@@ -188,7 +249,7 @@ export default function ContractsPage() {
                 fontSize: 13,
                 fontWeight: 500,
                 background: filterType === tier.id ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
-                border: `1px solid ${filterType === tier.id ? 'var(--teal)' : 'rgba(255,255,255,0.08)'}`,
+                border: `1px solid ${filterType === tier.id ? '#1D9E75' : 'rgba(255,255,255,0.08)'}`,
                 borderRadius: 100,
                 color: filterType === tier.id ? '#fff' : 'rgba(255,255,255,0.7)',
                 cursor: 'pointer',
@@ -203,53 +264,51 @@ export default function ContractsPage() {
             </button>
           ))}
         </div>
+
+        <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+          <span>Sort:</span>
+          <button 
+            onClick={() => toggleSort('created_at')} 
+            style={{ background: 'none', border: 'none', color: sortBy === 'created_at' ? '#1D9E75' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: sortBy === 'created_at' ? '600' : '500' }}
+          >
+            Date {sortBy === 'created_at' && (sortAsc ? '▲' : '▼')}
+          </button>
+          <button 
+            onClick={() => toggleSort('overall_risk')} 
+            style={{ background: 'none', border: 'none', color: sortBy === 'overall_risk' ? '#1D9E75' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: sortBy === 'overall_risk' ? '600' : '500' }}
+          >
+            Risk {sortBy === 'overall_risk' && (sortAsc ? '▲' : '▼')}
+          </button>
+          <button 
+            onClick={() => toggleSort('name')} 
+            style={{ background: 'none', border: 'none', color: sortBy === 'name' ? '#1D9E75' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: sortBy === 'name' ? '600' : '500' }}
+          >
+            Name {sortBy === 'name' && (sortAsc ? '▲' : '▼')}
+          </button>
+        </div>
       </div>
 
-      {/* Contracts Table / List */}
+      {/* Contracts Table List */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: 0.3 }}>
           {[1, 2, 3, 4].map(i => (
-            <div key={i} style={{ height: 64, background: 'rgba(255,255,255,0.04)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <div key={i} style={{ height: 68, background: 'rgba(255,255,255,0.04)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
           ))}
         </div>
       ) : processedContracts.length === 0 ? (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '64px 24px',
-          background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, textAlign: 'center'
+          background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 12, textAlign: 'center'
         }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', marginBottom: 16 }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <FileText size={40} color="rgba(255,255,255,0.2)" style={{ marginBottom: 16 }} />
           <h3 style={{ fontSize: 16, color: '#fff', fontWeight: 600, margin: '0 0 6px 0' }}>No contracts found</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-            {searchQuery ? 'Adjust your search queries to locate files.' : 'Upload and analyze a contract to begin.'}
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+            {searchQuery ? 'Adjust your search queries or keywords to locate matching files.' : 'Upload and analyze a contract to populate your workspace.'}
           </p>
         </div>
       ) : (
-        <div style={{
-          borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)',
-          overflow: 'hidden', background: 'rgba(255,255,255,0.02)'
-        }}>
-          {/* Header Row */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1.5fr 1.2fr 80px',
-            padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.02)', fontWeight: 600, fontSize: 11,
-            textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)'
-          }}>
-            <div onClick={() => toggleSort('name')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              Contract Name {sortBy === 'name' && (sortAsc ? '▲' : '▼')}
-            </div>
-            <div>Agreement Type</div>
-            <div onClick={() => toggleSort('created_at')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              Analysis Date {sortBy === 'created_at' && (sortAsc ? '▲' : '▼')}
-            </div>
-            <div onClick={() => toggleSort('overall_risk')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              Overall Risk {sortBy === 'overall_risk' && (sortAsc ? '▲' : '▼')}
-            </div>
-            <div style={{ textAlign: 'right' }}>Actions</div>
-          </div>
-
-          {/* Rows */}
-          {processedContracts.map((contract) => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {processedContracts.map(contract => {
             const risk = riskBadgeCls(contract.overall_risk)
             const dateStr = contract.created_at
               ? new Date(contract.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -258,57 +317,76 @@ export default function ContractsPage() {
             return (
               <div
                 key={contract.id}
-                onClick={() => router.push(`/app?contractId=${contract.id}`)}
+                onClick={() => router.push(`/app/contracts/${contract.id}`)}
                 style={{
-                  display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1.5fr 1.2fr 80px',
-                  padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  alignItems: 'center', cursor: 'pointer', transition: 'background 150ms ease'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease'
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                  e.currentTarget.style.borderColor = 'rgba(29, 158, 117, 0.3)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)'
+                }}
               >
-                {/* Name */}
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'rgba(255,255,255,0.4)' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span>{contract.name}</span>
-                </div>
-
-                {/* Type */}
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                  {contract.contract_type || 'Custom Agreement'}
-                </div>
-
-                {/* Date */}
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-                  {dateStr}
-                </div>
-
-                {/* Risk Badge */}
-                <div>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    fontSize: 11, fontWeight: 600, color: risk.color, background: risk.bg,
-                    padding: '3px 10px', borderRadius: 100, border: `1px solid ${risk.color}25`
+                {/* Contract Meta Info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: 1 }}>
+                  <div style={{ 
+                    width: 42, height: 42, borderRadius: 8, 
+                    background: 'rgba(29,158,117,0.1)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#1D9E75', flexShrink: 0
                   }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: risk.color }} />
-                    {risk.label} {contract.overall_risk !== null ? `(${contract.overall_risk})` : ''}
-                  </span>
+                    <FileText size={20} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: '#fff', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {contract.name}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'rgba(255,255,255,0.5)', flexWrap: 'wrap' }}>
+                      <span>{contract.contract_type ? contract.contract_type.toUpperCase() : 'Custom Agreement'}</span>
+                      <span>&bull;</span>
+                      <span>{dateStr}</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div style={{ textAlign: 'right' }}>
+                {/* Risk Badging & Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+                  <div>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      fontSize: 11, fontWeight: 600, color: risk.color, background: risk.bg,
+                      padding: '4px 12px', borderRadius: 100, border: `1px solid ${risk.color}20`
+                    }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: risk.color }} />
+                      {risk.label} {contract.overall_risk !== null ? `(${contract.overall_risk})` : ''}
+                    </span>
+                  </div>
+
                   <button
                     onClick={(e) => deleteContract(contract.id, e)}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer', color: '#E24B4A',
-                      fontSize: 12, fontWeight: 500, padding: '4px 8px', borderRadius: 4,
-                      transition: 'background 150ms'
+                      fontSize: 12, fontWeight: 500, padding: '6px 12px', borderRadius: 6,
+                      transition: 'background 150ms', display: 'flex', alignItems: 'center', gap: 4
                     }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(226,75,74,0.1)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                   >
+                    <Trash2 size={13} />
                     Delete
                   </button>
+                  <ChevronRight size={18} color="rgba(255,255,255,0.3)" />
                 </div>
               </div>
             )

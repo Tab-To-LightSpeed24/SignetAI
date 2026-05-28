@@ -211,6 +211,7 @@ export default async function SettingsPage() {
               <option value="nda" style={{ background: '#0D1B2A', color: '#fff' }}>NDA / Confidentiality</option>
               <option value="vendor" style={{ background: '#0D1B2A', color: '#fff' }}>Vendor Agreement</option>
               <option value="service" style={{ background: '#0D1B2A', color: '#fff' }}>Service Level Agreement (SLA)</option>
+              <option value="oem_supply" style={{ background: '#0D1B2A', color: '#fff' }}>Automotive / OEM Supply</option>
             </select>
             <button type="submit" style={{
               padding: '12px 24px', 

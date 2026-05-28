@@ -50,17 +50,15 @@ export default function BillingPage() {
   const isDanger = usagePercent >= 80
 
   return (
-    <div style={{ maxWidth: 800, padding: 32, color: '#E2E8F0' }}>
-      <h1 className="font-display" style={{ fontSize: 24, margin: '0 0 24px 0', fontWeight: 400, color: '#fff', fontFamily: 'var(--font-display), serif' }}>
+    <div className="animate-fade-in-up" style={{ maxWidth: 900, padding: 32, color: '#E2E8F0', margin: '0 auto' }}>
+      <h1 className="font-display" style={{ fontSize: 28, margin: '0 0 32px 0', fontWeight: 500, color: '#fff', fontFamily: 'var(--font-display), serif' }}>
         Billing & Plan
       </h1>
 
-      <div style={{ 
-        background: 'rgba(255,255,255,0.03)', 
-        border: '1px solid rgba(255,255,255,0.08)', 
-        borderRadius: 12, 
-        padding: 24,
-        marginBottom: 32
+      <div className="glass" style={{ 
+        borderRadius: 16, 
+        padding: 32,
+        marginBottom: 40
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
           <div>
@@ -98,16 +96,19 @@ export default function BillingPage() {
       
       <div style={{ display: 'flex', gap: 20, alignItems: 'stretch' }}>
         {/* Starter Plan */}
-        <div style={{ 
+        <div className="glass" style={{ 
           flex: 1,
-          background: 'rgba(0,0,0,0.2)', 
-          border: '1px solid rgba(255,255,255,0.1)', 
-          borderRadius: 12, 
-          padding: 24,
+          borderRadius: 16, 
+          padding: 32,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
+          justifyContent: 'space-between',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.2)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+        >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <Shield size={20} color="#BA7517" />
@@ -130,7 +131,7 @@ export default function BillingPage() {
           </div>
           <button 
             onClick={() => handleUpgrade('starter')}
-            className="btn-primary"
+            className="btn-secondary"
             style={{ width: '100%', padding: '12px 0', fontSize: 14, fontWeight: 600 }}
           >
             Upgrade to Starter
@@ -138,17 +139,22 @@ export default function BillingPage() {
         </div>
 
         {/* Growth Plan */}
-        <div style={{ 
+        <div className="glass" style={{ 
           flex: 1,
           background: 'rgba(29,158,117,0.05)', 
           border: '1px solid rgba(29,158,117,0.3)', 
-          borderRadius: 12, 
-          padding: 24,
+          borderRadius: 16, 
+          padding: 32,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          position: 'relative'
-        }}>
+          position: 'relative',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(29,158,117,0.15)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+        >
           <div>
             <div style={{ position: 'absolute', top: -12, right: 24, background: '#1D9E75', color: '#fff', fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 100, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Recommended
@@ -174,7 +180,7 @@ export default function BillingPage() {
           </div>
           <button 
             onClick={() => handleUpgrade('growth')}
-            className="btn-primary"
+            className="btn-cta"
             style={{ width: '100%', padding: '12px 0', fontSize: 14, fontWeight: 600 }}
           >
             Upgrade to Growth

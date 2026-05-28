@@ -3,16 +3,31 @@ import { profiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 export async function checkUsageLimit(userId: string): Promise<boolean> {
-  const [profile] = await db.select().from(profiles).where(eq(profiles.id, userId))
+  let [profile] = await db.select().from(profiles).where(eq(profiles.id, userId))
   
+  // Auto-provision a default profile row if it's missing
   if (!profile) {
-    return false;
+    try {
+      const [newProfile] = await db.insert(profiles).values({
+        id: userId,
+        plan: 'free',
+        contractsUsedThisCycle: 0,
+      }).returning()
+      profile = newProfile
+    } catch (err) {
+      console.error('Failed to auto-create profile in checkUsageLimit:', err)
+      return false
+    }
   }
 
   if (profile.plan === 'unlimited') {
     return true;
   }
 
-  const limit = profile.plan === 'premium' ? 50 : 3;
+  let limit = 3;
+  if (profile.plan === 'starter') limit = 15;
+  else if (profile.plan === 'growth') limit = 50;
+  else if (profile.plan === 'premium') limit = 50;
+
   return (profile.contractsUsedThisCycle ?? 0) < limit;
 }

@@ -10,7 +10,6 @@ import { installAuthInterceptor, clearSessionAndRedirect } from '@/lib/auth-inte
 const PRIMARY_NAV = [
   { label: 'Dashboard',        href: '/app/dashboard' },
   { label: 'My Contracts',     href: '/app/contracts' },
-  { label: 'Contract Search',  href: '/app/repository' },
   { label: 'My Playbook',      href: '/app/settings' },
   { label: 'Renewal Calendar', href: '/app/calendar' },
 ]
@@ -66,10 +65,11 @@ function NavLink({ label, href, isActive, collapsed }: { label: string; href: st
       <SidebarIcon label={label} color={isActive ? '#1D9E75' : 'rgba(255, 255, 255, 0.5)'} />
       <span style={{
         opacity: collapsed ? 0 : 1,
-        width: collapsed ? 0 : 'auto',
+        maxWidth: collapsed ? 0 : 160,
+        marginLeft: collapsed ? 0 : 10,
         overflow: 'hidden',
         whiteSpace: 'nowrap',
-        transition: 'opacity 200ms ease, width 200ms ease',
+        transition: 'opacity 300ms ease, max-width 300ms ease, margin-left 300ms ease',
       }}>
         {label}
       </span>
@@ -205,7 +205,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const barDanger = usagePercent >= 80 ? 'danger' : usagePercent >= 60 ? 'warning' : ''
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="motion-glow" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ═══ TOP NAVBAR ══════════════════════════════════════════════════════ */}
       <header style={{
@@ -439,7 +439,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           style={{
             flex: 1,
             overflowY: 'auto',
-            background: '#0D1B2A',
+            background: 'transparent',
             minHeight: 0,
             paddingLeft: isSidebarExpanded ? 240 : 64,
             paddingTop: 60, // Fixed padding for top fixed header

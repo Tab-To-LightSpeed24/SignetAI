@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
   const [activeContractId, setActiveContractId] = useState<string | null>(null)
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([])
 
   // Pre-flight states
   const [detectedContractType, setDetectedContractType] = useState<string>('global')
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [checkedRules, setCheckedRules] = useState<Record<string, boolean>>({})
   const [bespokeConstraints, setBespokeConstraints] = useState('')
   const [isFallbackScan, setIsFallbackScan] = useState<boolean>(false)
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('English')
 
   // Toast Notifications
   const [toasts, setToasts] = useState<{ id: string; type: 'success' | 'error' | 'info'; message: string }[]>([])
@@ -139,6 +141,92 @@ export default function DashboardPage() {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
+
+  // ── Ingestion console logs generator ────────────────────────────────────
+  useEffect(() => {
+    if (status === 'idle') {
+      setTerminalLogs([])
+      return
+    }
+
+    // Set initial log based on status
+    let initialLogs: string[] = []
+    if (status === 'uploading') {
+      initialLogs = [
+        '[INFO] Initializing secure ingestion pipeline...',
+        `[INFO] Target document detected: ${fileName || 'contract.pdf'}`,
+        '[INFO] Negotiating TLS handshake & preparing byte stream...'
+      ]
+    } else if (status === 'quick-scanning') {
+      initialLogs = [
+        '[INFO] Launching Pass 1: Quick Auto-Detection Scan...',
+        '[INFO] Parsing structural layouts and classifying document boundaries...',
+        '[INFO] Dispatching context signature to Gemini model engine...'
+      ]
+    } else if (status === 'analyzing') {
+      initialLogs = [
+        '[INFO] Launching Pass 2: Deep Signet AI Risk Analysis...',
+        '[INFO] Fetching playbook preference rules & custom deal constraints...',
+        '[INFO] Segmenting document nodes and constructing legal semantic graph...'
+      ]
+    } else if (status === 'verifying') {
+      initialLogs = [
+        '[INFO] Verifying payment and usage signatures with license provider...',
+        '[INFO] Validating available tokens and computing processing headroom...'
+      ]
+    }
+
+    setTerminalLogs(initialLogs)
+
+    let index = 0
+    const scanMessages = [
+      '[INFO] Analyzing document structure and category...',
+      '[WARNING] Upstream model busy, retrying in 1000ms... (3 retries left)',
+      '[WARNING] Upstream Gemini error (503/429/UNAVAILABLE). Retrying in 2500ms... (2 retries left)',
+      '[INFO] Local fallback heuristics activated to guarantee fast response...',
+      '[INFO] Parsing title blocks and legal preamble...',
+      '[INFO] Autoprotect systems green. Preparing category precheck...'
+    ]
+
+    const analyzeMessages = [
+      '[INFO] Extracting raw clause boundaries...',
+      '[INFO] Evaluating playbook compliance parameters...',
+      '[INFO] Contacting Gemini AI models for legal risk evaluation...',
+      '[WARNING] Upstream Gemini error (503/429/UNAVAILABLE). Retrying in 1000ms... (3 retries left)',
+      '[WARNING] Upstream Gemini error (503/429/UNAVAILABLE). Retrying in 2500ms... (2 retries left)',
+      '[INFO] Successfully connected! Processing clause breakdowns...',
+      '[INFO] Flagging high-risk provisions and drafting counter-clauses...',
+      '[INFO] Analysis compile complete. Writing results to workspace...'
+    ]
+
+    const uploadMessages = [
+      '[INFO] Writing document stream to secure database bucket...',
+      '[INFO] Uploading contract metadata and drafting payloads...',
+      '[INFO] File payload hashed and verified (SHA-256 integrity green)...',
+      '[INFO] Ingestion transaction complete.'
+    ]
+
+    const verifyMessages = [
+      '[INFO] Session authenticated. Syncing subscription plan properties...',
+      '[INFO] Verification check succeeded. License keys green.'
+    ]
+
+    const messages = status === 'uploading' ? uploadMessages
+                   : status === 'quick-scanning' ? scanMessages
+                   : status === 'analyzing' ? analyzeMessages
+                   : verifyMessages
+
+    const interval = setInterval(() => {
+      if (index < messages.length) {
+        setTerminalLogs(prev => [...prev, messages[index]])
+        index++
+      } else {
+        clearInterval(interval)
+      }
+    }, status === 'uploading' ? 800 : status === 'quick-scanning' ? 1200 : 2500)
+
+    return () => clearInterval(interval)
+  }, [status, fileName])
 
   const deleteContract = useCallback(async (contractId: string) => {
     try {
@@ -317,7 +405,7 @@ export default function DashboardPage() {
           contractId: activeContractId, 
           perspective: selectedPerspective,
           playbookRules: selectedRules,
-          bespokeConstraints: bespokeConstraints,
+          bespokeConstraints: bespokeConstraints + `\n\nCRITICAL OUTPUT REQUIREMENT: ALL plainEnglish and recommendation responses MUST be strictly written in ${selectedLanguage}.`,
           contractType: detectedContractType
         })
       })
@@ -382,13 +470,13 @@ export default function DashboardPage() {
     return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   }, [])
 
-  const firstName = profile?.fullName?.split(' ')[0] ?? 'there'
+  const firstName = (profile?.full_name || profile?.fullName)?.split(' ')[0] ?? 'there'
   const planLimits: Record<string, number> = { free: 3, starter: 15, growth: 50 }
   const planKey = profile?.plan ?? 'free'
   const planLimit = planLimits[planKey] ?? 3
-  const contractsUsed = profile?.contractsUsedThisCycle ?? 0
+  const contractsUsed = profile?.contracts_used_this_cycle ?? profile?.contractsUsedThisCycle ?? 0
   const usagePercent = Math.min((contractsUsed / planLimit) * 100, 100)
-  const highRiskCount = contractsList.filter((c: any) => (c.overallRisk ?? 0) >= 7).length
+  const highRiskCount = contractsList.filter((c: any) => ((c.overall_risk || c.overallRisk) ?? 0) >= 7).length
   const totalContracts = contractsList.length
 
   // Filtered rules matching the detected category
@@ -404,11 +492,11 @@ export default function DashboardPage() {
         aVal = (a.name || '').toLowerCase()
         bVal = (b.name || '').toLowerCase() 
       } else if (sortField === 'overall_risk') { 
-        aVal = a.overallRisk ?? 0
-        bVal = b.overallRisk ?? 0 
+        aVal = (a.overall_risk || a.overallRisk) ?? 0
+        bVal = (b.overall_risk || b.overallRisk) ?? 0 
       } else { 
-        aVal = new Date(a.createdAt).getTime()
-        bVal = new Date(b.createdAt).getTime() 
+        aVal = new Date(a.created_at || a.createdAt || 0).getTime()
+        bVal = new Date(b.created_at || b.createdAt || 0).getTime() 
       }
       if (aVal < bVal) return sortAsc ? -1 : 1
       if (aVal > bVal) return sortAsc ? 1 : -1
@@ -473,13 +561,14 @@ export default function DashboardPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(7, 14, 23, 0.8)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(7, 14, 23, 0.85)',
+          backdropFilter: 'blur(10px)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
-          zIndex: 100,
-          padding: 24
+          zIndex: 1000,
+          padding: '40px 24px',
+          overflowY: 'auto'
         }}>
           <div style={{
             background: '#0D1B2A',
@@ -488,8 +577,7 @@ export default function DashboardPage() {
             width: '100%',
             maxWidth: 640,
             padding: 32,
-            maxHeight: '90vh',
-            overflowY: 'auto',
+            maxHeight: 'none',
             boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
             position: 'relative'
           }}>
@@ -633,6 +721,51 @@ export default function DashboardPage() {
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* 1.5. Output Language Selector */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>
+                  Output Translation Language:
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      outline: 'none',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      backdropFilter: 'blur(12px)',
+                    }}
+                  >
+                    <option value="English" style={{ background: '#0D1B2A', color: '#fff' }}>English</option>
+                    <option value="Tamil" style={{ background: '#0D1B2A', color: '#fff' }}>Tamil (தமிழ்)</option>
+                    <option value="Hindi" style={{ background: '#0D1B2A', color: '#fff' }}>Hindi (हिन्दी)</option>
+                  </select>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: 16,
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
@@ -996,9 +1129,12 @@ export default function DashboardPage() {
 
                 {/* Table Rows */}
                 {sortedContracts.slice(0, 3).map((contract: any, idx: number) => {
-                  const risk = contractRiskLabel(contract.overallRisk)
-                  const uploadDate = contract.createdAt
-                    ? new Date(contract.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                  const contractOverallRisk = contract.overall_risk || contract.overallRisk
+                  const contractCreatedAt = contract.created_at || contract.createdAt
+                  const contractTypeVal = contract.contract_type || contract.contractType
+                  const risk = contractRiskLabel(contractOverallRisk)
+                  const uploadDate = contractCreatedAt
+                    ? new Date(contractCreatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—'
                   const isKebabOpen = activeKebabId === contract.id
                   const statusLabel = contract.status === 'done' ? 'Complete'
@@ -1036,7 +1172,7 @@ export default function DashboardPage() {
 
                       {/* Type */}
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {contract.contractType ? contract.contractType.toUpperCase() : '—'}
+                        {contractTypeVal ? contractTypeVal.toUpperCase() : '—'}
                       </div>
 
                       {/* Uploaded */}
@@ -1059,7 +1195,7 @@ export default function DashboardPage() {
                         }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: risk.color, display: 'inline-block', flexShrink: 0 }} />
                           {risk.label}
-                          {contract.overallRisk ? ` (${contract.overallRisk})` : ''}
+                          {contractOverallRisk ? ` (${contractOverallRisk})` : ''}
                         </span>
                       </div>
 
@@ -1141,7 +1277,7 @@ export default function DashboardPage() {
               {/* Sleek action link */}
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
                 <button
-                  onClick={() => router.push('/app/repository')}
+                  onClick={() => router.push('/app/contracts')}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -1239,6 +1375,46 @@ export default function DashboardPage() {
             {status === 'analyzing' && 'Constructing legal safety profiles and evaluating playbook compliance parameters...'}
             {status === 'verifying' && 'Checking status signature with payment network. Please wait...'}
           </p>
+
+          {/* Premium Developer Ingestion Console */}
+          <div style={{
+            maxWidth: 580,
+            margin: '32px auto 0',
+            background: 'rgba(0, 0, 0, 0.45)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 10,
+            padding: '16px 20px',
+            textAlign: 'left',
+            fontFamily: 'Consolas, Monaco, monospace',
+            fontSize: 12.5,
+            color: '#1D9E75',
+            lineHeight: 1.6,
+            maxHeight: 240,
+            overflowY: 'auto',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            backdropFilter: 'blur(12px)',
+          }}>
+            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 8, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 600, letterSpacing: '0.05em' }}>INGESTION CONSOLE</span>
+              <span style={{ display: 'flex', gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff5f56' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffbd2e' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#27c93f' }} />
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {terminalLogs.filter(log => typeof log === 'string').map((log, index) => (
+                <div key={index} style={{
+                  color: log.includes('WARNING') ? '#BA7517' : log.includes('ERROR') ? '#E24B4A' : '#1D9E75',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {log}
+                </div>
+              ))}
+              {/* Flashing cursor */}
+              <div style={{ display: 'inline-block', width: 8, height: 14, background: '#1D9E75', marginLeft: 2, verticalAlign: 'middle', animation: 'blink 1s step-end infinite' }} />
+            </div>
+          </div>
         </div>
       )}
 

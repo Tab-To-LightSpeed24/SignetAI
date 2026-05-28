@@ -159,8 +159,6 @@ export async function POST(req: Request) {
       : 'No bespoke deal constraints provided.'
 
     const userPerspective = perspective || 'Neutral'
-    const systemInstruction = buildSystemInstruction(userPerspective, formattedPlaybookRules, formattedBespokeConstraints)
-
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, contractId))
     if (!contract) throw new Error('Contract not found')
 
@@ -174,6 +172,13 @@ export async function POST(req: Request) {
       updateFields.contractType = contractType
     }
     await db.update(contracts).set(updateFields).where(eq(contracts.id, contractId))
+
+    const activeContractType = contractType || contract.contractType
+    let systemInstruction = buildSystemInstruction(userPerspective, formattedPlaybookRules, formattedBespokeConstraints)
+
+    if (activeContractType === 'oem_supply') {
+      systemInstruction += `\n\nCRITICAL AUTO OEM RISKS TO FLAG: 1. Line-Stoppage Indemnity (holding supplier liable for OEM downtime). 2. Tooling & Die IP Ownership (OEM claiming ownership of unpaid molds). 3. Unilateral Rolling Forecasts (forcing inventory holds without purchase guarantees).\n\nREDLINING DIRECTIVE: For the \`negotiationLanguage\` output, you must draft aggressive, Tier-1 standard counter-clauses. Limit indemnities to direct damages, explicitly reject consequential line-down charges, and mandate that tooling IP transfers only upon 100% payment clearance.`
+    }
 
     let parsedResponse: any = null
 

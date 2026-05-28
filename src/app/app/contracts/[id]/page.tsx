@@ -13,7 +13,9 @@ import {
   BellOff, 
   Flag,
   ArrowLeft,
-  X
+  X,
+  Maximize2,
+  Minimize2
 } from 'lucide-react'
 
 const PdfViewerPane = dynamic(
@@ -123,6 +125,8 @@ export default function ContractPage() {
   const [pdfFile, setPdfFile] = useState<ArrayBuffer | null>(null)
   const [totalPages, setTotalPages] = useState(0)
   const [zoom, setZoom] = useState(1.0)
+  const [isPdfMinimized, setIsPdfMinimized] = useState(false)
+  const [userPlan, setUserPlan] = useState<string>('free')
   const abortPollingRef = useRef(false)
 
   const supabase = useMemo(
@@ -369,6 +373,16 @@ export default function ContractPage() {
         setFileName(data.name || 'Contract')
         await loadPdf(id)
 
+        try {
+          const usageRes = await fetch('/api/billing/usage-check', { headers })
+          if (usageRes.ok) {
+            const usageData = await usageRes.json()
+            setUserPlan(usageData.plan || 'free')
+          }
+        } catch (e) {
+          console.error('Error fetching plan:', e)
+        }
+
         if (data.status === 'done') {
           const reportRes = await fetch(`/api/contracts/${id}/report`, { headers })
           if (reportRes.ok) {
@@ -415,6 +429,28 @@ export default function ContractPage() {
       showToast(err.message || 'Failed to delete contract', 'error')
     }
   }, [supabase, router, showToast])
+
+  const scrollToPdfPage = useCallback((pageNumber: number | null | undefined) => {
+    if (!pageNumber) return
+    const el = document.getElementById(`pdf-page-${pageNumber}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      showToast(`Scrolled to Page ${pageNumber} in document`, 'info')
+    }
+  }, [showToast])
+
+  const handleCardHeaderClick = useCallback((clauseId: string, pageNumber: number | null | undefined) => {
+    setExpandedCards(prev => {
+      const nextVal = !prev[clauseId]
+      if (nextVal && pageNumber) {
+        setIsPdfMinimized(false)
+        setTimeout(() => {
+          scrollToPdfPage(pageNumber)
+        }, 350)
+      }
+      return { ...prev, [clauseId]: nextVal }
+    })
+  }, [scrollToPdfPage])
 
   return (
     <div style={{ maxWidth: '100%', padding: '24px 32px', color: '#E2E8F0', position: 'relative' }}>
@@ -525,23 +561,38 @@ export default function ContractPage() {
 
       {/* RESULTS — DUAL PANE */}
       {status === 'done' && result && (
-        <div style={{ display: 'flex', gap: 28, height: 'calc(100vh - 160px)', minHeight: 550 }}>
+        <div style={{ display: 'flex', gap: isPdfMinimized ? 0 : 28, height: 'calc(100vh - 160px)', minHeight: 550 }}>
           
           {/* LEFT PANE: Interactive High-Fidelity Report */}
-          <div style={{ flex: '1 1 45%', minWidth: 420, maxWidth: 580, overflowY: 'auto', paddingRight: 12, display: 'flex', flexDirection: 'column' }}>
+          <div id="pdf-export-content" style={{ 
+            flex: isPdfMinimized ? '1 1 100%' : '1 1 45%', 
+            minWidth: 420, 
+            maxWidth: isPdfMinimized ? 'none' : 580, 
+            overflowY: 'auto', 
+            paddingRight: 12, 
+            display: 'flex', 
+            flexDirection: 'column',
+            transition: 'all 300ms ease-in-out'
+          }}>
             
             {/* Sticky Page Header */}
             <div style={{
               position: 'sticky',
               top: 0,
-              background: '#0D1B2A',
               zIndex: 10,
-              paddingBottom: 16,
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
               marginBottom: 20,
+            }}>
+            <div style={{
+              background: 'rgba(10, 18, 30, 0.88)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 12,
+              padding: '12px 16px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
             }}>
               {/* Left side: Contract Name (Editable Inline) */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, overflow: 'hidden' }}>
@@ -585,14 +636,190 @@ export default function ContractPage() {
               {/* Right side: Secondary action CTAs & kebab */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <button 
-                  onClick={() => {
+                  onClick={() => setIsPdfMinimized(!isPdfMinimized)}
+                  className="btn-secondary" 
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    borderColor: 'rgba(255,255,255,0.15)',
+                    color: '#fff',
+                    background: isPdfMinimized ? 'rgba(29,158,117,0.15)' : 'rgba(255,255,255,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = isPdfMinimized ? 'rgba(29,158,117,0.15)' : 'rgba(255,255,255,0.04)'}
+                  title={isPdfMinimized ? "Show PDF Document Viewer" : "Hide PDF Document Viewer (Full Screen Analysis)"}
+                >
+                  {isPdfMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+                  {isPdfMinimized ? 'Show Document' : 'Full Screen Report'}
+                </button>
+
+                <button 
+                  onClick={async () => {
                     setIsExporting(true)
                     showToast('Generating B2B Export PDF...', 'info')
-                    setTimeout(() => {
-                      setIsExporting(false)
+                    try {
+                      const html2pdf = (await import('html2pdf.js')).default
+                      
+                      // Create a dynamic off-screen high-contrast print layout
+                      const printContainer = document.createElement('div')
+                      printContainer.style.position = 'absolute'
+                      printContainer.style.left = '0'
+                      printContainer.style.top = '-10000px'
+                      printContainer.style.width = '800px'
+                      printContainer.style.zIndex = '99999'
+                      printContainer.style.background = '#FFFFFF'
+                      printContainer.style.color = '#2D3748'
+                      
+                      printContainer.innerHTML = `
+                        <div style="padding: 40px; background: #ffffff; font-family: system-ui, -apple-system, sans-serif; color: #2D3748; line-height: 1.5;">
+                          <!-- Header -->
+                          <div style="border-bottom: 2px solid #0D1B2A; padding-bottom: 16px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                              <h1 style="margin: 0; font-size: 28px; color: #0D1B2A; font-family: Georgia, serif; font-weight: 600; letter-spacing: -0.01em;">Signet AI</h1>
+                              <p style="margin: 4px 0 0 0; font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Contract Compliance & Risk Report</p>
+                            </div>
+                            <div style="text-align: right;">
+                              <p style="margin: 0; font-size: 14px; color: #1A2A3A; font-weight: 700;">${contractName}</p>
+                              <p style="margin: 2px 0 0 0; font-size: 11px; color: #718096;">Generated on ${new Date().toLocaleDateString()}</p>
+                            </div>
+                          </div>
+
+                          <!-- Executive Summary -->
+                          <div style="background: #F8FAFC; border-left: 5px solid ${riskColor}; padding: 24px; border-radius: 8px; margin-bottom: 28px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                              <span style="font-size: 11px; font-weight: 700; padding: 4px 12px; background: ${overallRisk >= 7 ? 'rgba(226,75,74,0.12)' : overallRisk >= 4 ? 'rgba(186,117,23,0.12)' : 'rgba(99,153,34,0.12)'}; color: ${riskColor}; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.03em;">
+                                ${riskLabel(overallRisk)}
+                              </span>
+                              <span style="font-size: 16px; font-weight: 700; color: #0D1B2A;">Overall Risk: <strong>${overallRisk} / 10</strong></span>
+                            </div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #4A5568; font-family: Georgia, serif; font-style: italic; font-weight: 500;">Executive Summary</h3>
+                            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #2D3748; font-style: italic;">
+                              &ldquo;${result?.contract.summary}&rdquo;
+                            </p>
+                          </div>
+
+                          <!-- Metrics Grid -->
+                          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px;">
+                            <div style="background: #F8FAFC; padding: 14px; border-radius: 8px; border: 1px solid #E2E8F0; text-align: center;">
+                              <div style="font-size: 11px; color: #718096; font-weight: 500;">Total Clauses</div>
+                              <div style="font-size: 22px; font-weight: 700; color: #0D1B2A; margin-top: 4px;">${totalClauses}</div>
+                            </div>
+                            <div style="background: #FFF5F5; padding: 14px; border-radius: 8px; border: 1px solid #FED7D7; text-align: center;">
+                              <div style="font-size: 11px; color: #C53030; font-weight: 500;">High Risk</div>
+                              <div style="font-size: 22px; font-weight: 700; color: #C53030; margin-top: 4px;">${activeHighRisk}</div>
+                            </div>
+                            <div style="background: #FFFAF0; padding: 14px; border-radius: 8px; border: 1px solid #FEEBC8; text-align: center;">
+                              <div style="font-size: 11px; color: #C05621; font-weight: 500;">Medium Risk</div>
+                              <div style="font-size: 22px; font-weight: 700; color: #C05621; margin-top: 4px;">${activeMediumRisk}</div>
+                            </div>
+                            <div style="background: #F0FFF4; padding: 14px; border-radius: 8px; border: 1px solid #C6F6D5; text-align: center;">
+                              <div style="font-size: 11px; color: #2F855A; font-weight: 500;">Key Dates</div>
+                              <div style="font-size: 22px; font-weight: 700; color: #2F855A; margin-top: 4px;">${result?.clauses.filter(c => c.clauseType.toLowerCase().includes('renewal') || c.clauseType.toLowerCase().includes('term')).length || 0}</div>
+                            </div>
+                          </div>
+
+                          <!-- Key Dates Section (If present) -->
+                          ${datesList.length > 0 ? `
+                            <div style="margin-bottom: 32px; page-break-inside: avoid;">
+                              <h3 style="font-size: 16px; color: #0D1B2A; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; margin: 0 0 16px 0; font-family: Georgia, serif; font-weight: 500;">Timeline Milestones</h3>
+                              <div style="display: flex; flex-direction: column; gap: 10px;">
+                                ${datesList.map(d => `
+                                  <div style="background: #FFFDF9; border: 1px solid #FEEBC8; border-left: 4px solid #D69E2E; padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                      <span style="font-size: 10px; font-weight: 700; color: #B7791F; text-transform: uppercase; letter-spacing: 0.02em;">${d.type}</span>
+                                      <div style="font-size: 14px; font-weight: 700; color: #1A2A3A; margin-top: 2px;">${d.value}</div>
+                                    </div>
+                                    <div style="text-align: right; font-size: 13px; color: #4A5568;">
+                                      <strong>${d.daysRemaining} days</strong> left
+                                    </div>
+                                  </div>
+                                `).join('')}
+                              </div>
+                            </div>
+                          ` : ''}
+
+                          <div style="page-break-after: always;"></div>
+
+                          <!-- Detailed Analysis Header -->
+                          <h3 style="font-size: 18px; color: #0D1B2A; margin: 0 0 24px 0; border-bottom: 2px solid #0D1B2A; padding-bottom: 10px; font-family: Georgia, serif; font-weight: 500;">Detailed Clause Analysis</h3>
+
+                          <div style="display: flex; flex-direction: column; gap: 24px;">
+                            ${sortedClauses.map((c, idx) => `
+                              <div style="page-break-inside: avoid; border: 1px solid #E2E8F0; border-left: 5px solid ${riskBorderColor(c.riskScore)}; border-radius: 8px; padding: 20px; background: #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.01); margin-bottom: 16px;">
+                                <!-- Card Header -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                  <h4 style="margin: 0; font-size: 15px; color: #0D1B2A; font-weight: 700;">
+                                    ${idx + 1}. ${c.clauseType} (Page ${c.pageNumber || 'N/A'})
+                                  </h4>
+                                  <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: ${c.riskScore >= 7 ? '#FFF5F5' : c.riskScore >= 4 ? '#FFFAF0' : '#F0FFF4'}; color: ${riskBorderColor(c.riskScore)}; border: 1px solid ${c.riskScore >= 7 ? '#FED7D7' : c.riskScore >= 4 ? '#FEEBC8' : '#C6F6D5'};">
+                                    RISK: ${c.riskScore} / 10
+                                  </span>
+                                </div>
+
+                                <!-- Playbook Violation Banner -->
+                                ${c.isPlaybookViolation ? `
+                                  <div style="background: #FFF5F5; border: 1px solid #FED7D7; border-left: 3px solid #E24B4A; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 12px; color: #C53030; font-weight: 600;">
+                                    ⚠️ Playbook Rule Violation Detected
+                                  </div>
+                                ` : ''}
+
+                                <!-- Original text -->
+                                <div style="margin-bottom: 14px;">
+                                  <div style="font-size: 10px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Original Contract Language</div>
+                                  <div style="font-size: 12px; font-family: monospace; background: #F8FAFC; border: 1px solid #EDF2F7; padding: 12px; border-radius: 6px; color: #2D3748; white-space: pre-wrap; line-height: 1.55;">
+                                    ${c.originalText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                                  </div>
+                                </div>
+
+                                <!-- Plain English -->
+                                <div style="margin-bottom: 14px;">
+                                  <div style="font-size: 10px; font-weight: 700; color: #1D9E75; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Plain English Translation</div>
+                                  <p style="margin: 0; font-size: 13px; color: #2D3748; line-height: 1.5;">${c.plainEnglish}</p>
+                                </div>
+
+                                <!-- Risk Context -->
+                                ${c.negotiationTip ? `
+                                  <div style="margin-bottom: 14px;">
+                                    <div style="font-size: 10px; font-weight: 700; color: ${c.riskScore >= 7 ? '#E24B4A' : '#BA7517'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Why this is risky for you</div>
+                                    <p style="margin: 0; font-size: 13px; color: #4A5568; line-height: 1.5;">${c.negotiationTip}</p>
+                                  </div>
+                                ` : ''}
+
+                                <!-- Suggested Counter-Clause -->
+                                ${c.riskScore >= 6 && c.negotiationLanguage ? `
+                                  <div style="background: #F0FFF4; border: 1px solid #C6F6D5; border-left: 4px solid #639922; padding: 14px; border-radius: 8px; margin-top: 16px;">
+                                    <div style="font-size: 10px; font-weight: 700; color: #2F855A; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Suggested Counter-Clause (Tier-1 Standard)</div>
+                                    <div style="font-size: 12px; font-family: monospace; background: rgba(255,255,255,0.85); padding: 10px; border-radius: 4px; color: #22543D; line-height: 1.55; border: 1px dashed #C6F6D5; white-space: pre-wrap;">
+                                      ${c.negotiationLanguage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                                    </div>
+                                  </div>
+                                ` : ''}
+                              </div>
+                            `).join('')}
+                          </div>
+                        </div>
+                      `
+                      
+                      document.body.appendChild(printContainer)
+                      
+                      const opt = {
+                        margin: 12,
+                        filename: `${contractName.replace(/\s+/g, '_')}_Risk_Report.pdf`,
+                        image: { type: 'jpeg' as const, quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true, logging: false },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+                      }
+                      
+                      await html2pdf().set(opt).from(printContainer).save()
+                      document.body.removeChild(printContainer)
                       showToast('Risk report exported as PDF!', 'success')
-                      window.print()
-                    }, 1500)
+                    } catch (e) {
+                      showToast('Failed to export PDF', 'error')
+                    }
+                    setIsExporting(false)
                   }}
                   className="btn-secondary" 
                   disabled={isExporting}
@@ -714,9 +941,22 @@ export default function ContractPage() {
                 </div>
               </div>
             </div>
+            </div>
 
             {/* SECTION A: EXECUTIVE SUMMARY CARD & STUNNING CIRCULAR RISK GAUGE */}
-            <div className="glass" style={{ padding: '20px 24px', marginBottom: 20, borderRadius: '8px', borderLeft: `4px solid ${riskColor}` }}>
+            <div style={{
+              padding: '20px 24px',
+              marginBottom: 16,
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              boxShadow: '0 2px 16px rgba(0,0,0,0.2)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+              borderRight: '1px solid rgba(255, 255, 255, 0.07)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+              borderLeft: `4px solid ${riskColor}`
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                 
                 {/* Left Side Info */}
@@ -807,11 +1047,11 @@ export default function ContractPage() {
 
             {/* SECTION B: KEY DATES ALERT PANEL (Shown only if datesList exists) */}
             <div style={{
-              background: 'rgba(186,117,23,0.08)',
-              border: '1px solid rgba(186,117,23,0.2)',
-              borderRadius: '8px',
+              background: 'rgba(186,117,23,0.06)',
+              border: '1px solid rgba(186,117,23,0.18)',
+              borderRadius: '12px',
               padding: '16px 20px',
-              marginBottom: 20
+              marginBottom: 16
             }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#BA7517', display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 12px 0' }}>
                 <Bell size={15} /> Key dates found in this contract
@@ -921,11 +1161,11 @@ export default function ContractPage() {
             {/* SECTION C: PLAYBOOK VIOLATIONS PANEL (Shown if user playbook preferences are violated) */}
             {playbookViolations.length > 0 && (
               <div style={{
-                background: 'rgba(226,75,74,0.08)',
-                border: '1px solid rgba(226,75,74,0.2)',
-                borderRadius: '8px',
+                background: 'rgba(226,75,74,0.06)',
+                border: '1px solid rgba(226,75,74,0.18)',
+                borderRadius: '12px',
                 padding: '16px 20px',
-                marginBottom: 20
+                marginBottom: 16
               }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: '#E24B4A', display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 12px 0' }}>
                   <AlertTriangle size={15} /> Playbook alert: {playbookViolations.length} items require attention
@@ -957,6 +1197,7 @@ export default function ContractPage() {
                       
                       <button
                         onClick={() => {
+                          scrollToPdfPage(pv.pageNumber)
                           setExpandedCards(prev => ({ ...prev, [pv.id]: true }))
                           setActiveFilter('all')
                           setTimeout(() => {
@@ -987,7 +1228,16 @@ export default function ContractPage() {
             )}
 
             {/* SECTION D: CLAUSE-BY-CLAUSE BREAKDOWN */}
-            <div id="clause-breakdown-section" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+            <div id="clause-breakdown-section" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              marginBottom: 20,
+              padding: '20px',
+              borderRadius: '12px',
+              background: 'rgba(255,255,255,0.015)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="font-display" style={{ fontSize: 18, margin: 0, fontWeight: 400, color: '#fff', fontFamily: 'var(--font-display), serif' }}>Clause Breakdown</h3>
                 
@@ -1074,11 +1324,13 @@ export default function ContractPage() {
                         id={`clause-card-${c.id}`}
                         className="clause-card"
                         style={{
-                          background: isResolved ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.03)',
-                          opacity: isResolved ? 0.6 : 1,
-                          border: isFlagged ? '1px solid rgba(186,117,23,0.3)' : '1px solid rgba(255,255,255,0.08)',
-                          boxShadow: isFlagged ? '0 0 10px rgba(186,117,23,0.1)' : 'none',
+                          background: 'rgba(255,255,255,0.03)',
+                          opacity: 1,
+                          borderTop: isFlagged ? '1px solid rgba(186,117,23,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                          borderRight: isFlagged ? '1px solid rgba(186,117,23,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                          borderBottom: isFlagged ? '1px solid rgba(186,117,23,0.3)' : '1px solid rgba(255,255,255,0.08)',
                           borderLeft: `4px solid ${riskBorderColor(c.riskScore)}`,
+                          boxShadow: isFlagged ? '0 0 10px rgba(186,117,23,0.1)' : 'none',
                           borderRadius: '8px',
                           padding: 16,
                           transition: 'all 200ms ease',
@@ -1087,12 +1339,12 @@ export default function ContractPage() {
                       >
                         {/* Accordion Trigger collapsed header */}
                         <div 
-                          onClick={() => setExpandedCards(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                          onClick={() => handleCardHeaderClick(c.id, c.pageNumber)}
                           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, overflow: 'hidden' }}>
                             <span style={{ fontSize: 14, flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
-                              {isResolved ? <CheckCircle2 size={14} style={{ color: '#639922' }} /> : riskEmoji(c.riskScore)}
+                              {riskEmoji(c.riskScore)}
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                               <strong style={{ fontSize: 13, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
@@ -1182,95 +1434,53 @@ export default function ContractPage() {
 
                             {/* Sub-section 4: Suggested Counter-Clause (Only shown if riskScore >= 6) */}
                             {c.riskScore >= 6 && c.negotiationLanguage && (
-                              <div style={{ padding: 14, background: 'rgba(99,153,34,0.05)', borderRadius: 8, border: '1px solid rgba(99,153,34,0.15)', marginBottom: 16 }}>
+                              <div style={{ padding: 14, background: 'rgba(99,153,34,0.05)', borderRadius: 8, border: '1px solid rgba(99,153,34,0.15)', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: '#639922', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Suggested Counter-Clause</div>
-                                <p className="font-mono" style={{ margin: '0 0 12px', fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 4 }}>
-                                  {c.negotiationLanguage}
-                                </p>
-                                <button 
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    navigator.clipboard.writeText(c.negotiationLanguage!)
-                                    setCopiedStates(prev => ({ ...prev, [c.id]: true }))
-                                    showToast('Counter-clause copied to clipboard!', 'success')
-                                    setTimeout(() => {
-                                      setCopiedStates(prev => ({ ...prev, [c.id]: false }))
-                                    }, 2000)
-                                  }}
-                                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', padding: '5px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                  </svg>
-                                  {copiedStates[c.id] ? 'Copied!' : 'Copy counter-clause'}
-                                </button>
+                                
+                                {userPlan === 'free' ? (
+                                  <>
+                                    <p className="font-mono" style={{ margin: '0 0 12px', fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 4, filter: 'blur(5px)', userSelect: 'none' }}>
+                                      {c.negotiationLanguage}
+                                    </p>
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(13,27,42,0.4)' }}>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); router.push('/app/settings/billing'); }}
+                                        className="btn-cta"
+                                        style={{ padding: '8px 16px', fontSize: 12 }}
+                                      >
+                                        Upgrade to View
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="font-mono" style={{ margin: '0 0 12px', fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 4 }}>
+                                      {c.negotiationLanguage}
+                                    </p>
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        navigator.clipboard.writeText(c.negotiationLanguage!)
+                                        setCopiedStates(prev => ({ ...prev, [c.id]: true }))
+                                        showToast('Counter-clause copied to clipboard!', 'success')
+                                        setTimeout(() => {
+                                          setCopiedStates(prev => ({ ...prev, [c.id]: false }))
+                                        }, 2000)
+                                      }}
+                                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', padding: '5px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                    >
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                      </svg>
+                                      {copiedStates[c.id] ? 'Copied!' : 'Copy counter-clause'}
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
-
-                            {/* Sub-section 5: High Fidelity User Actions */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 14 }}>
-                              
-                              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}>
-                                  <input 
-                                    type="checkbox" 
-                                    checked={isFlagged}
-                                    onChange={() => toggleFlag(c.id)}
-                                    style={{ accentColor: '#BA7517' }}
-                                  />
-                                  Flag for lawyer review
-                                </label>
-
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}>
-                                  <input 
-                                    type="checkbox" 
-                                    checked={isResolved}
-                                    onChange={() => toggleResolve(c.id)}
-                                    style={{ accentColor: '#639922' }}
-                                  />
-                                  Resolve clause (dim card)
-                                </label>
-                              </div>
-
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>Add a personal note:</span>
-                                  {noteStatus[c.id] === 'typing' && <span style={{ color: '#BA7517', fontSize: 10 }}>Saving note...</span>}
-                                  {noteStatus[c.id] === 'saved' && (
-                                    <span style={{ color: '#639922', fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                      Saved <Check size={10} />
-                                    </span>
-                                  )}
-                                </span>
-                                <textarea
-                                  placeholder="e.g., Ask Suresh if we can cap tool damage liabilities here..."
-                                  value={personalNotes[c.id] || ''}
-                                  onChange={(e) => {
-                                    setPersonalNotes(prev => ({ ...prev, [c.id]: e.target.value }))
-                                    setNoteStatus(prev => ({ ...prev, [c.id]: 'typing' }))
-                                  }}
-                                  onBlur={() => {
-                                    savePersonalNote(c.id, personalNotes[c.id] || '')
-                                  }}
-                                  rows={2}
-                                  style={{
-                                    width: '100%',
-                                    fontSize: 12,
-                                    background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: 6,
-                                    padding: 8,
-                                    color: '#fff',
-                                    outline: 'none',
-                                    resize: 'none',
-                                  }}
-                                />
-                              </div>
-
-                            </div>
 
                           </div>
                         )}
@@ -1282,7 +1492,7 @@ export default function ContractPage() {
             </div>
 
             {/* SECTION E: CSS OVERALL RISK CHART */}
-            <div className="glass" style={{ padding: '20px 24px', borderRadius: '8px', marginBottom: 20 }}>
+            <div className="glass" style={{ padding: '20px 24px', borderRadius: '12px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
               <h3 className="font-display" style={{ fontSize: 16, color: '#fff', fontWeight: 400, margin: '0 0 16px 0', fontFamily: 'var(--font-display), serif' }}>
                 Risk breakdown by clause type
               </h3>
@@ -1318,9 +1528,9 @@ export default function ContractPage() {
             {/* SECTION F: EXPERT REVIEW CTA */}
             {overallRisk >= 6 && (
               <div style={{
-                background: 'rgba(186,117,23,0.03)',
-                border: '1px solid rgba(186,117,23,0.3)',
-                borderRadius: '8px',
+                background: 'rgba(186,117,23,0.04)',
+                border: '1px solid rgba(186,117,23,0.25)',
+                borderRadius: '12px',
                 padding: '20px 24px',
                 marginBottom: 24,
                 display: 'flex',
@@ -1374,10 +1584,18 @@ export default function ContractPage() {
 
           </div>
 
-          {/* RIGHT PANE: Continuous Scroll PDF Viewer (Strictly preserved worker rules) */}
-          <div className="glass" style={{
-            flex: '1 1 55%', display: 'flex', flexDirection: 'column', borderRadius: '8px', overflow: 'hidden',
-            minWidth: 420, border: '1px solid rgba(255,255,255,0.08)'
+          {/* RIGHT PANE: Original Document */}
+          <div style={{ 
+            flex: isPdfMinimized ? '0 0 0%' : '1 1 55%', 
+            opacity: isPdfMinimized ? 0 : 1,
+            pointerEvents: isPdfMinimized ? 'none' : 'auto',
+            display: 'flex', 
+            flexDirection: 'column', 
+            borderRadius: '8px', 
+            overflow: 'hidden',
+            minWidth: isPdfMinimized ? 0 : 420, 
+            border: isPdfMinimized ? 'none' : '1px solid rgba(255,255,255,0.08)',
+            transition: 'all 500ms cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             <PdfViewerPane 
               pdfFile={pdfFile} 

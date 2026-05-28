@@ -212,6 +212,22 @@
   transform: translateZ(0);
 }
 
+/* === Motion Glow Background === */
+@keyframes motionGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.motion-glow {
+  background: radial-gradient(circle at center, rgba(29,158,117,0.08) 0%, rgba(13,27,42,1) 60%),
+              radial-gradient(circle at 80% 20%, rgba(29,158,117,0.06) 0%, transparent 40%),
+              radial-gradient(circle at 20% 80%, rgba(29,158,117,0.04) 0%, transparent 40%);
+  background-color: var(--navy);
+  background-size: 200% 200%;
+  animation: motionGlow 15s ease infinite;
+}
+
 /* === Clause card (app internal — no public hover) === */
 .clause-card {
   transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;

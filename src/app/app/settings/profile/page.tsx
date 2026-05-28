@@ -23,7 +23,7 @@ export default function ProfilePage() {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
         
       if (data) {
         setProfile({
@@ -70,8 +70,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div style={{ maxWidth: 600, padding: 32, color: '#E2E8F0' }}>
-      <h1 className="font-display" style={{ fontSize: 24, margin: '0 0 24px 0', fontWeight: 400, color: '#fff', fontFamily: 'var(--font-display), serif' }}>
+    <div className="animate-fade-in-up" style={{ maxWidth: 600, padding: 32, color: '#E2E8F0', margin: '0 auto' }}>
+      <h1 className="font-display" style={{ fontSize: 28, margin: '0 0 32px 0', fontWeight: 500, color: '#fff', fontFamily: 'var(--font-display), serif' }}>
         User Profile
       </h1>
       
@@ -89,7 +89,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <form onSubmit={handleSave} className="glass" style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 32, borderRadius: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Email (Read Only)</label>
           <input 
@@ -153,12 +153,12 @@ export default function ProfilePage() {
           />
         </div>
 
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 12 }}>
           <button 
             type="submit" 
             disabled={saving}
-            className="btn-primary"
-            style={{ padding: '10px 24px', fontSize: 14 }}
+            className="btn-cta"
+            style={{ padding: '12px 28px', fontSize: 14 }}
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>

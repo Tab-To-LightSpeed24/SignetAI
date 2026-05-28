@@ -1,5 +1,6 @@
 import PublicNavbar from '@/components/public/PublicNavbar'
 import PublicFooter from '@/components/public/PublicFooter'
+import GlobalWaitlistModal from '@/components/public/GlobalWaitlistModal'
 
 export const metadata = {
   title: 'Signet AI — AI Contract Risk Analyzer for Indian SMEs',
@@ -19,6 +20,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <PublicFooter />
+      <GlobalWaitlistModal />
     </>
   )
 }

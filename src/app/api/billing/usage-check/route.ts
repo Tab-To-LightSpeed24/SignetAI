@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { checkUsageLimit } from '@/lib/usage'
+import { db } from '@/db'
+import { profiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,8 +30,42 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const canAnalyze = await checkUsageLimit(user.id)
-    return NextResponse.json({ canAnalyze })
+    // Check if profile exists; if not, auto-create it with metadata from Supabase
+    let [profile] = await db.select().from(profiles).where(eq(profiles.id, user.id))
+    
+    if (!profile) {
+      try {
+        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || 'User'
+        const [newProfile] = await db.insert(profiles).values({
+          id: user.id,
+          fullName: fullName,
+          plan: 'free',
+          contractsUsedThisCycle: 0,
+        }).returning()
+        profile = newProfile
+      } catch (err) {
+        console.error('Failed to auto-create profile in API:', err)
+      }
+    }
+
+    const plan = profile?.plan ?? 'free'
+    const used = profile?.contractsUsedThisCycle ?? 0
+    
+    // Map plan to exact contract limits
+    let limit = 3
+    if (plan === 'starter') limit = 15
+    else if (plan === 'growth') limit = 50
+    else if (plan === 'premium') limit = 50
+    else if (plan === 'unlimited') limit = -1
+
+    const canAnalyze = limit === -1 ? true : used < limit
+
+    return NextResponse.json({
+      canAnalyze,
+      used,
+      limit,
+      plan
+    })
   } catch (error: any) {
     console.error('Usage check error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

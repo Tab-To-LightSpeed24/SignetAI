@@ -56,7 +56,7 @@ async function retryWithBackoff<T>(
   throw new Error('Retries failed')
 }
 
-function classifyContractByContent(filename: string, textSnippet = ''): { contractType: string, recommendedPerspective: 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral' } {
+function classifyContractByContent(filename: string, textSnippet = ''): { contractType: string, recommendedPerspective: 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral' | 'Supplier' } {
   const combined = (filename + ' ' + textSnippet).toLowerCase()
   const cleanText = combined.replace(/[_\-\.\/]/g, ' ')
   
@@ -72,6 +72,10 @@ function classifyContractByContent(filename: string, textSnippet = ''): { contra
       perspective = 'Landlord'
     }
     return { contractType: 'lease', recommendedPerspective: perspective }
+  }
+  
+  if (/\b(oem|automotive|component|tooling|line-stoppage|iatf|manufacturing supply)\b/i.test(cleanText)) {
+    return { contractType: 'oem_supply', recommendedPerspective: 'Supplier' }
   }
   
   if (/\b(vendor|supply|purchase|distribution|procurement|supplier|seller|merchant|invoice|reseller|sales agreement)\b/i.test(cleanText)) {
@@ -128,8 +132,8 @@ export async function POST(req: Request) {
     const systemPrompt = `You are a legal document classifier.
 Analyze the provided contract document and return a JSON object matching this schema:
 {
-  "contractType": "lease" | "nda" | "vendor" | "service" | "global",
-  "recommendedPerspective": "Tenant" | "Landlord" | "Buyer" | "Seller" | "Neutral"
+  "contractType": "lease" | "nda" | "vendor" | "service" | "global" | "oem_supply",
+  "recommendedPerspective": "Tenant" | "Landlord" | "Buyer" | "Seller" | "Neutral" | "Supplier"
 }
 
 Pick the contractType that fits best:
@@ -137,6 +141,7 @@ Pick the contractType that fits best:
 - "nda" for non-disclosure or confidentiality agreements.
 - "vendor" for supply, distribution, purchase, or vendor agreements.
 - "service" for service level agreements, consulting, master service agreements, or employment.
+- "oem_supply" for automotive, OEM, component, tooling, line-stoppage, manufacturing supply agreements.
 - "global" if it doesn't clearly fit or is generic.
 
 Pick the recommendedPerspective that is the natural user perspective:
@@ -144,11 +149,12 @@ Pick the recommendedPerspective that is the natural user perspective:
 - "Landlord" for lease/rentals where the user is the lessor.
 - "Buyer" for purchase/procurement where the user buys.
 - "Seller" for supplier/sales where the user sells.
+- "Supplier" for oem/supply agreements where the user supplies parts or components.
 - "Neutral" if it's mutual or balanced (e.g. NDA, joint venture).`
 
     let responseText = ''
     let fallback = false
-    let result: { contractType: string; recommendedPerspective: 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral' }
+    let result: { contractType: string; recommendedPerspective: 'Tenant' | 'Landlord' | 'Buyer' | 'Seller' | 'Neutral' | 'Supplier' }
 
     try {
       if (filename.endsWith('.pdf')) {
