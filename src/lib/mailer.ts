@@ -1,32 +1,33 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+})
 
 /**
- * Sends contact form and partner application emails via Resend.
+ * Sends contact form and partner application emails via SMTP transport.
  *
  * Required env vars:
- *   RESEND_API_KEY   — Resend API key (already configured)
- *   CONTACT_EMAIL    — corporate inbox, e.g. signetai.support@gmail.com
- *
- * The `from` address uses Resend's shared onboarding domain while you are
- * in sandbox / before verifying a custom sending domain. Once you verify
- * a domain on resend.com, change RESEND_FROM to e.g. no-reply@signetai.in
+ *   SMTP_HOST      — e.g., smtp.gmail.com
+ *   SMTP_PORT      — e.g., 587
+ *   SMTP_USER      — SMTP username / sender email
+ *   SMTP_PASS      — SMTP password / app password
+ *   CONTACT_EMAIL  — corporate inbox, e.g. signetai.support@gmail.com
  */
 export async function sendSubmissionEmail(type: 'contact' | 'partner', data: any) {
-  const apiKey = process.env.RESEND_API_KEY
-  const toEmail = process.env.CONTACT_EMAIL
-  const fromEmail = process.env.RESEND_FROM ?? 'Signet AI <onboarding@resend.dev>'
+  const toEmail = process.env.CONTACT_EMAIL || 'signetai.support@gmail.com'
+  const fromEmail = process.env.SMTP_USER || 'hello@signet-ai.in'
 
-  if (!apiKey) {
-    console.warn('[Mailer] RESEND_API_KEY is not set. Falling back to DB-only logging.')
-    return { success: false, reason: 'no_api_key' }
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('[Mailer] SMTP credentials are not fully set. Falling back to DB-only logging.')
+    return { success: false, reason: 'smtp_unconfigured' }
   }
-
-  if (!toEmail) {
-    console.error('[Mailer] CONTACT_EMAIL is not set. Email routing aborted.')
-    return { success: false, reason: 'no_contact_email' }
-  }
-
-  const resend = new Resend(apiKey)
 
   let subject = ''
   let html = ''
@@ -66,7 +67,7 @@ export async function sendSubmissionEmail(type: 'contact' | 'partner', data: any
           <strong style="display: block; margin-bottom: 6px;">Message:</strong>
           <p style="margin: 0; white-space: pre-wrap;">${data.message}</p>
         </div>
-        <p style="font-size: 11px; color: #718096; margin-top: 24px; text-align: center; border-top: 1px solid rgba(13,27,42,0.08); padding-top: 10px;">Sent via Signet AI Lead Routing · Powered by Resend</p>
+        <p style="font-size: 11px; color: #718096; margin-top: 24px; text-align: center; border-top: 1px solid rgba(13,27,42,0.08); padding-top: 10px;">Sent via Signet AI Lead Routing · Powered by SMTP</p>
       </div>
     `
   } else {
@@ -112,28 +113,23 @@ export async function sendSubmissionEmail(type: 'contact' | 'partner', data: any
           <strong style="display: block; margin-bottom: 6px;">Biography &amp; Statement:</strong>
           <p style="margin: 0; white-space: pre-wrap;">${data.bio || 'None provided'}</p>
         </div>
-        <p style="font-size: 11px; color: #718096; margin-top: 24px; text-align: center; border-top: 1px solid rgba(13,27,42,0.08); padding-top: 10px;">Sent via Signet AI Lead Routing · Powered by Resend</p>
+        <p style="font-size: 11px; color: #718096; margin-top: 24px; text-align: center; border-top: 1px solid rgba(13,27,42,0.08); padding-top: 10px;">Sent via Signet AI Lead Routing · Powered by SMTP</p>
       </div>
     `
   }
 
   try {
-    const { data: result, error } = await resend.emails.send({
-      from: fromEmail,
-      to: [toEmail],
+    const info = await transporter.sendMail({
+      from: `"Signet AI Lead Router" <${fromEmail}>`,
+      to: toEmail,
       subject,
       html,
     })
 
-    if (error) {
-      console.error('[Mailer] Resend API returned error:', error)
-      return { success: false, error: error.message }
-    }
-
-    console.log(`[Mailer] Email dispatched via Resend. ID: ${result?.id}`)
-    return { success: true, id: result?.id }
+    console.log(`[Mailer] Email dispatched via SMTP. Message ID: ${info.messageId}`)
+    return { success: true, id: info.messageId }
   } catch (err: any) {
-    console.error('[Mailer] Unexpected error calling Resend:', err)
+    console.error('[Mailer] SMTP transport error:', err)
     return { success: false, error: err.message }
   }
 }
