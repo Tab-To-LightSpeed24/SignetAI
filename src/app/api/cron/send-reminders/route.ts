@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { contractDates, reminders, contracts, profiles } from '@/db/schema'
+import { contractDates, reminders, contracts, authUsers } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import { sendUserConfirmation } from '@/lib/email'
 
@@ -9,13 +9,6 @@ export const dynamic = 'force-dynamic' // Ensure it runs dynamically for cron
 export async function GET(req: Request) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
-  }
-
-  const toEmail = process.env.CONTACT_EMAIL
-
-  if (!toEmail) {
-    console.error('[Cron] CONTACT_EMAIL is not set. Cannot dispatch reminders.')
-    return NextResponse.json({ error: true, message: 'CONTACT_EMAIL not configured' }, { status: 500 })
   }
 
   try {
@@ -28,12 +21,12 @@ export async function GET(req: Request) {
         dateType: contractDates.dateType,
         dateValue: contractDates.dateValue,
         contractName: contracts.name,
-        userEmail: profiles.id, // routes to the central CONTACT_EMAIL inbox
+        userEmail: authUsers.email,
       })
       .from(reminders)
       .innerJoin(contractDates, eq(reminders.contractDateId, contractDates.id))
       .innerJoin(contracts, eq(contractDates.contractId, contracts.id))
-      .innerJoin(profiles, eq(reminders.userId, profiles.id))
+      .innerJoin(authUsers, eq(reminders.userId, authUsers.id))
       .where(
         and(
           eq(reminders.active, true),
@@ -49,13 +42,20 @@ export async function GET(req: Request) {
     }
 
     let sent = 0
+    const successfulDateIds: string[] = []
 
     for (const r of activeReminders) {
-      const subject = `[Signet AI Reminder] ${r.dateType} approaching for ${r.contractName}`
+      const userEmail = r.userEmail
+      if (!userEmail) {
+        console.warn(`[Cron] User email is missing for reminder on contract "${r.contractName}"`)
+        continue
+      }
+
+      const subject = `Reminder: Contract expiring soon - ${r.contractName}`
       const html = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1D9E75;">Contract Deadline Reminder</h2>
-          <p>This is a reminder that a key date is approaching for your contract.</p>
+          <p>Your contract <strong>${r.contractName}</strong> has an upcoming milestone.</p>
           <ul>
             <li><strong>Contract:</strong> ${r.contractName}</li>
             <li><strong>Event:</strong> ${r.dateType}</li>
@@ -69,21 +69,27 @@ export async function GET(req: Request) {
         </div>
       `
 
-      const { error } = await sendUserConfirmation(toEmail, subject, html)
-
-      if (error) {
-        console.error(`[Cron] Failed to send reminder for contract "${r.contractName}":`, error)
-      } else {
+      try {
+        await sendUserConfirmation(
+          userEmail,
+          subject,
+          html
+        )
+        successfulDateIds.push(r.contractDateId)
         sent++
+      } catch (error: any) {
+        console.error(`Failed to send reminder to ${userEmail}:`, error.message)
+        continue
       }
     }
 
-    // Mark as sent
-    const dateIds = activeReminders.map(r => r.contractDateId)
-    if (dateIds.length > 0) {
-      await db.update(contractDates)
-        .set({ reminderSent: true })
-        .where(sql`${contractDates.id} IN ${dateIds}`)
+    // Mark successful ones as sent
+    if (successfulDateIds.length > 0) {
+      for (const id of successfulDateIds) {
+        await db.update(contractDates)
+          .set({ reminderSent: true })
+          .where(eq(contractDates.id, id))
+      }
     }
 
     return NextResponse.json({ success: true, sent, total: activeReminders.length })

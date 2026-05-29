@@ -3,6 +3,7 @@ import { pgTable, uuid, text, integer, boolean, timestamp, date, pgSchema } from
 const authSchema = pgSchema('auth');
 export const authUsers = authSchema.table('users', {
   id: uuid('id').primaryKey(),
+  email: text('email'),
 });
 
 export const profiles = pgTable('profiles', {

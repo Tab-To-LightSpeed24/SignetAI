@@ -33,19 +33,24 @@ export async function POST(req: Request) {
       message
     };
 
-    await sendAdminNotification(
-      `New contact form: ${data.subject}`,
-      `<p><strong>From:</strong> ${data.name} (${data.email})</p>
-       <p><strong>Company:</strong> ${data.company}</p>
-       <p><strong>Message:</strong> ${data.message}</p>`
-    );
+    try {
+      await sendAdminNotification(
+        `New contact form: ${data.subject}`,
+        `<p><strong>From:</strong> ${data.name} (${data.email})</p>
+         <p><strong>Company:</strong> ${data.company}</p>
+         <p><strong>Message:</strong> ${data.message}</p>`
+      );
+    } catch (error: any) {
+      console.error("Resend Contact Error:", error);
+      return NextResponse.json(
+        { success: false, error: error.message || "Email failed to send" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, submission: inserted })
   } catch (error: any) {
-    console.error("Resend API Error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to send email" },
-      { status: 500 }
-    );
+    console.error("Contact Submission DB/JSON Error:", error);
+    return NextResponse.json({ error: true, message: error.message }, { status: 500 })
   }
 }

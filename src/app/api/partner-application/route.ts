@@ -42,20 +42,29 @@ export async function POST(req: Request) {
       bio: bio || '—'
     };
 
-    await sendAdminNotification(
-      `New lawyer partner application: ${data.full_name}`,
-      `<p><strong>Name:</strong> ${data.full_name}</p>
-       <p><strong>Firm:</strong> ${data.firm_name}</p>
-       <p><strong>Bar No:</strong> ${data.bar_enrollment}</p>
-       <p><strong>City:</strong> ${data.city}</p>
-       <p><strong>Email:</strong> ${data.email}</p>
-       <p><strong>Phone:</strong> ${data.phone}</p>
-       <p><strong>Specializations:</strong> ${data.specializations}</p>
-       <p><strong>Bio:</strong> ${data.bio}</p>`
-    );
+    try {
+      await sendAdminNotification(
+        `New lawyer partner application: ${data.full_name}`,
+        `<p><strong>Name:</strong> ${data.full_name}</p>
+         <p><strong>Firm:</strong> ${data.firm_name}</p>
+         <p><strong>Bar No:</strong> ${data.bar_enrollment}</p>
+         <p><strong>City:</strong> ${data.city}</p>
+         <p><strong>Email:</strong> ${data.email}</p>
+         <p><strong>Phone:</strong> ${data.phone}</p>
+         <p><strong>Specializations:</strong> ${data.specializations}</p>
+         <p><strong>Bio:</strong> ${data.bio}</p>`
+      );
+    } catch (error: any) {
+      console.error("Resend Partner Error:", error);
+      return NextResponse.json(
+        { success: false, error: error.message || "Email failed to send" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, application: inserted })
-  } catch (err: any) {
-    return NextResponse.json({ error: true, message: err.message }, { status: 500 })
+  } catch (error: any) {
+    console.error("Partner Application DB/JSON Error:", error);
+    return NextResponse.json({ error: true, message: error.message }, { status: 500 })
   }
 }
