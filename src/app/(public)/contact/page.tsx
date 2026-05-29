@@ -73,7 +73,7 @@ export default function ContactPage() {
 
       {/* Form + Info */}
       <section style={{ background: '#09111E', padding: '72px 24px 96px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 56 }} className="grid-cols-1 md:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-8 md:gap-14" style={{ maxWidth: 960, margin: '0 auto' }}>
           {/* Form */}
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 36 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: '#FFFFFF', fontWeight: 400, margin: '0 0 28px 0' }}>Send us a message</h2>

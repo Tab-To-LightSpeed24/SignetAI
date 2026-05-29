@@ -92,7 +92,7 @@ export default function ResourcesPage() {
 
       {/* Article Grid */}
       <section style={{ background: '#09111E', padding: '40px 24px 96px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }} className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6" style={{ maxWidth: 1000, margin: '0 auto' }}>
           {filtered.map((article, i) => (
             <Link key={i} href={article.href} style={{ textDecoration: 'none', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '26px', display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(255,255,255,0.02)' }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{article.category}</span>

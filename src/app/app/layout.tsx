@@ -12,6 +12,7 @@ const PRIMARY_NAV = [
   { label: 'My Contracts',     href: '/app/contracts' },
   { label: 'My Playbook',      href: '/app/settings' },
   { label: 'Renewal Calendar', href: '/app/calendar' },
+  { label: 'Legal Partners',   href: '/app/referrals' },
 ]
 
 // ─── Icon helper ──────────────────────────────────────────────────────────────
@@ -98,17 +99,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [visible, setVisible] = useState(true)
   const [atTop, setAtTop] = useState(true)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isMobileLayout, setIsMobileLayout] = useState(false)
   const lastScrollY = useRef(0)
   const mainRef = useRef<HTMLElement>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
   const fetchedRef = useRef(false) // prevent double-fetch in StrictMode
 
-  const [isMobile, setIsMobile] = useState(true)
-
+  // ── Client-side layout size detection (prevents SSR hydration error) ────────
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768)
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => {
+      setIsMobileLayout(window.innerWidth < 768)
+    }
+    handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -119,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return cleanup
   }, [supabase])
 
-  // ── Scroll event listener for hide-on-scroll camouflage navbar ──
+  // ── Scroll event listener for hide-on-scroll navbar ──
   useEffect(() => {
     const mainEl = mainRef.current
     if (!mainEl) return
@@ -129,6 +134,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const isAtTop = currentY < 10
 
       setAtTop(isAtTop)
+
+      // If mobile sidebar is open, do not hide header
+      if (mobileSidebarOpen) {
+        setVisible(true)
+        return
+      }
 
       if (currentY > lastScrollY.current && currentY > 60) {
         // Scrolling down — hide
@@ -142,7 +153,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     mainEl.addEventListener('scroll', onScroll, { passive: true })
     return () => mainEl.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [mobileSidebarOpen])
 
   // ── Supabase SIGNED_OUT listener — soft redirect only ────────────────────
   useEffect(() => {
@@ -229,15 +240,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         transform: visible ? 'translateY(0)' : 'translateY(-60px)',
         transition: 'transform 350ms cubic-bezier(0.16,1,0.3,1), background 300ms ease, border-color 300ms ease, backdrop-filter 300ms ease',
       }}>
-        {/* Logo */}
-        <Link href="/app" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#1D9E75' }}>
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M9 15l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span className="font-display" style={{ fontSize: 22, color: '#FFFFFF', fontWeight: 400 }}>Signet AI</span>
-        </Link>
+        {/* Logo & Mobile Menu Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Hamburger button on mobile */}
+          <button
+            onClick={() => setMobileSidebarOpen(prev => !prev)}
+            className="flex md:hidden items-center justify-center"
+            aria-label="Toggle sidebar menu"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '6px',
+              transition: 'background 200ms',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            {mobileSidebarOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            )}
+          </button>
+
+          <Link href="/app" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#1D9E75' }}>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M9 15l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="font-display" style={{ fontSize: 22, color: '#FFFFFF', fontWeight: 400 }}>Signet AI</span>
+          </Link>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flex: 1, justifyContent: 'flex-end' }}>
 
@@ -329,83 +373,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Mobile Horizontal Navigation Bar */}
-      <div 
-        className="flex md:hidden items-center gap-4 px-4 overflow-x-auto border-b border-white/10"
+      {/* ── Hover trigger zone on the left viewport edge (desktop only) ── */}
+      <div
+        className="hidden md:block"
+        onMouseEnter={() => setIsSidebarExpanded(true)}
         style={{
-          height: 48,
-          background: 'rgba(9, 17, 30, 0.95)',
           position: 'fixed',
           top: visible ? 60 : 0,
           left: 0,
-          right: 0,
-          zIndex: 44,
-          whiteSpace: 'nowrap',
+          bottom: 0,
+          width: 64,
+          zIndex: 45,
+          background: 'transparent',
           transition: 'top 350ms cubic-bezier(0.16,1,0.3,1)',
         }}
-      >
-        {PRIMARY_NAV.map(item => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? '#1D9E75' : 'rgba(255,255,255,0.6)',
-                padding: '4px 10px',
-                borderRadius: 4,
-                background: isActive ? 'rgba(29, 158, 117, 0.1)' : 'transparent',
-                textDecoration: 'none',
-                flexShrink: 0
-              }}
-            >
-              {item.label}
-            </Link>
-          )
-        })}
-        <Link
-          href="/app/referrals"
-          style={{
-            fontSize: 13,
-            fontWeight: pathname === '/app/referrals' ? 600 : 500,
-            color: pathname === '/app/referrals' ? '#1D9E75' : 'rgba(255,255,255,0.6)',
-            padding: '4px 10px',
-            borderRadius: 4,
-            background: pathname === '/app/referrals' ? 'rgba(29, 158, 117, 0.1)' : 'transparent',
-            textDecoration: 'none',
-            flexShrink: 0
-          }}
-        >
-          Legal Partners
-        </Link>
-      </div>
+      />
 
-      {/* Mobile Top Bar */}
-      <div className="flex md:hidden w-full h-16 border-b border-gray-800 items-center px-4 justify-between bg-gray-950" style={{ position: 'fixed', top: visible ? 60 : 0, left: 0, right: 0, zIndex: 44 }}>
-        <span className="text-white font-bold text-lg">Signet AI</span>
-        {/* Hamburger menu icon */}
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-      </div>
-
-      {/* ═══ BODY: SIDEBAR + CONTENT ════════════════════════════════════════ */}
+      {/* ─── BODY: SIDEBAR + CONTENT ──────────────────────────────────────── */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
 
-        {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
+        {/* Mobile Sidebar Backdrop Overlay */}
+        {mobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[89] md:hidden animate-fadeIn"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+
+        {/* ── LEFT SIDEBAR (Slide-out drawer on mobile, fixed/hover-expanded on desktop) ───── */}
         <aside
-          className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0"
+          className={`fixed inset-y-0 left-0 z-[90] md:z-[46] flex flex-col border-r border-white/5 bg-[#09111e]/98 backdrop-blur-md md:bg-[#09111e]/95 transition-all duration-300 md:transition-[width,padding,top] md:duration-300 ease-in-out ${
+            isMobileLayout ? (mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'
+          }`}
+          onMouseEnter={() => { if (!isMobileLayout) setIsSidebarExpanded(true) }}
+          onMouseLeave={() => { if (!isMobileLayout) setIsSidebarExpanded(false) }}
           style={{
             top: visible ? 60 : 0,
-            background: 'rgba(9, 17, 30, 0.95)',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
-            padding: '20px 12px',
-            zIndex: 46,
-            transition: 'top 350ms cubic-bezier(0.16,1,0.3,1)',
+            bottom: 0,
+            width: isMobileLayout ? 256 : (isSidebarExpanded ? 240 : 64),
+            padding: isMobileLayout ? '20px 16px' : (isSidebarExpanded ? '20px 12px' : '20px 8px'),
             overflowY: 'auto',
             overflowX: 'hidden',
           }}
@@ -413,21 +419,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Analyse New CTA */}
           <button
             className="btn-cta"
-            onClick={() => router.push('/app/dashboard')}
+            onClick={() => {
+              setMobileSidebarOpen(false)
+              setIsSidebarExpanded(false)
+              router.push('/app/dashboard')
+            }}
             style={{ 
               width: '100%', 
-              padding: '10px 16px', 
+              padding: (isMobileLayout || isSidebarExpanded) ? '10px 16px' : '10px 0', 
               fontSize: 14, 
               marginBottom: 24, 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              gap: 8,
+              gap: (isMobileLayout || isSidebarExpanded) ? 8 : 0,
               boxShadow: 'none',
             }}
+            title={(!isMobileLayout && !isSidebarExpanded) ? "Analyse New Contract" : undefined}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span style={{ whiteSpace: 'nowrap' }}>
+            <span style={{
+              display: (isMobileLayout || isSidebarExpanded) ? 'inline' : 'none',
+              whiteSpace: 'nowrap',
+            }}>
               Analyse New Contract
             </span>
           </button>
@@ -435,26 +449,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Primary nav */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {PRIMARY_NAV.map(item => (
-              <NavLink key={item.href} label={item.label} href={item.href} isActive={pathname === item.href} collapsed={false} />
+              <div key={item.href} onClick={() => setMobileSidebarOpen(false)}>
+                <NavLink label={item.label} href={item.href} isActive={pathname === item.href} collapsed={isMobileLayout ? false : !isSidebarExpanded} />
+              </div>
             ))}
           </nav>
 
           {/* Usage indicator */}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16, marginTop: 'auto', overflow: 'hidden' }}>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
-              <span>Contracts this month</span>
-              <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{usage.used}/{usage.limit}</span>
-            </div>
-            <div className="usage-bar">
-              <div className={`usage-bar-fill ${barDanger}`} style={{ width: `${usagePercent}%` }} />
-            </div>
-            {usagePercent >= 80 && (
-              <Link
-                href="/app/settings/billing"
-                style={{ display: 'block', marginTop: 8, fontSize: 12, textDecoration: 'none', fontWeight: 500, color: '#E24B4A' }}
+            {(isMobileLayout || isSidebarExpanded) ? (
+              <>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Contracts this month</span>
+                  <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{usage.used}/{usage.limit}</span>
+                </div>
+                <div className="usage-bar">
+                  <div className={`usage-bar-fill ${barDanger}`} style={{ width: `${usagePercent}%` }} />
+                </div>
+                {usagePercent >= 80 && (
+                  <Link
+                    href="/app/settings/billing"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    style={{ display: 'block', marginTop: 8, fontSize: 12, textDecoration: 'none', fontWeight: 500, color: '#E24B4A' }}
+                  >
+                    Upgrade plan now →
+                  </Link>
+                )}
+              </>
+            ) : (
+              <div 
+                style={{ display: 'flex', justifyContent: 'center', cursor: 'pointer' }}
+                title={`Usage: ${usage.used}/${usage.limit} contracts`}
+                onClick={() => router.push('/app/settings/billing')}
               >
-                Upgrade plan now →
-              </Link>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: barDanger === 'danger' ? 'rgba(226,75,74,0.1)' : 'rgba(29,158,117,0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: barDanger === 'danger' ? '#E24B4A' : '#1D9E75',
+                  fontSize: 11, fontWeight: 700
+                }}>
+                  {usage.used}
+                </div>
+              </div>
             )}
           </div>
         </aside>
@@ -462,12 +499,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
         <main
           ref={mainRef}
-          className="w-full md:pl-64 flex-1"
+          className="w-full flex-1 pt-[60px]"
           style={{
             overflowY: 'auto',
             background: 'transparent',
             minHeight: 0,
-            paddingTop: isMobile ? 108 : 60, // Fixed padding for top fixed header
+            paddingLeft: isMobileLayout ? 0 : (isSidebarExpanded ? 240 : 64),
+            transition: 'padding-left 300ms ease-in-out',
           }}
         >
           <div key={pathname} className="page-transition">

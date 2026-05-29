@@ -483,7 +483,7 @@ export default function ContractPage() {
   }, [scrollToPdfPage])
 
   return (
-    <div style={{ maxWidth: '100%', padding: '24px 32px', color: '#E2E8F0', position: 'relative' }}>
+    <div className="px-3 py-4 md:px-8 md:py-6" style={{ maxWidth: '100%', color: '#E2E8F0', position: 'relative' }}>
       
       {/* Toast Notifications Panel */}
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99999, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1093,7 +1093,7 @@ export default function ContractPage() {
               </div>
 
               {/* 4-Card Statistics Matrix Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Identified</div>
                   <div style={{ fontSize: 18, fontWeight: 600, color: '#fff', marginTop: 2 }}>{totalClauses}</div>

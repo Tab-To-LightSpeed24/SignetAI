@@ -40,7 +40,7 @@ export default function AboutPage() {
           <h2 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: 36, color: '#FFFFFF', fontWeight: 400, textAlign: 'center', margin: '0 0 48px 0' }}>
             Empowering Indian SMEs with Legal Clarity
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 40 }} className="grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
             <div>
               <h3 style={{ fontSize: 19, fontWeight: 600, color: '#FFFFFF', margin: '0 0 12px 0' }}>SME Protection</h3>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, margin: 0 }}>
@@ -62,7 +62,7 @@ export default function AboutPage() {
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12, display: 'block', textAlign: 'center' }}>HOW WE OPERATE</span>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', fontWeight: 400, textAlign: 'center', margin: '0 0 52px 0' }}>Our principles</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28 }} className="grid-cols-1 md:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-7">
             {PRINCIPLES.map((item, i) => (
               <div key={i} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16 }}>
                 <span style={{ display: 'block', marginBottom: 16 }}>{item.icon}</span>

@@ -95,7 +95,7 @@ export default async function SettingsPage() {
       background: 'linear-gradient(135deg, #070e17 0%, #0D1B2A 100%)', 
       color: '#eee', 
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '40px 20px'
+      padding: '24px 16px'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         

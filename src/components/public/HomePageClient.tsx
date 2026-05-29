@@ -86,7 +86,7 @@ export default function HomePageClient() {
           }} />
         </div>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 64, alignItems: 'center', width: '100%', position: 'relative', zIndex: 1 }} className="grid-cols-1 lg:grid-cols-2">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 lg:gap-16 items-center w-full" style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 24px', position: 'relative', zIndex: 1 }}>
           
           {/* Left Text Column */}
           <div style={{ maxWidth: 580 }} className="animate-fade-in-up">
@@ -223,7 +223,7 @@ export default function HomePageClient() {
 
       {/* THE PROBLEM SECTION */}
       <section style={{ background: '#0D1B2A', padding: '96px 24px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 64, alignItems: 'center' }} className="grid-cols-1 lg:grid-cols-2">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center" style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12, display: 'block' }}>THE LIQUIDITY THREAT</span>
             <h2 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: 40, lineHeight: 1.2, color: '#FFFFFF', fontWeight: 400, margin: '0 0 24px 0' }}>
@@ -333,7 +333,7 @@ export default function HomePageClient() {
             From complex document to clear intelligence.
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }} className="grid-cols-1 md:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             
             {/* Step 1 */}
             <div style={{ 
@@ -422,7 +422,7 @@ export default function HomePageClient() {
             Everything you need to negotiate with complete confidence.
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, textAlign: 'left' }} className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 text-left">
             {FEATURES.map((feat, i) => (
               <div key={i} style={{ 
                 padding: '28px', 
@@ -461,7 +461,7 @@ export default function HomePageClient() {
             Built specifically for Tamil Nadu's export powerhouses.
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28 }} className="grid-cols-1 md:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-7">
             {VERTICAL_CARDS.map((card, i) => (
               <Link key={i} href={card.href} style={{ 
                 textDecoration: 'none', 

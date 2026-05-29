@@ -149,10 +149,10 @@ export default function ContractsPage() {
   const lowRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) < 4 && (c.overall_risk ?? 0) > 0).length, [contracts])
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 40px', color: '#E2E8F0' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', color: '#E2E8F0' }} className="px-4 py-6 md:px-10 md:py-8">
       
       {/* ─── Dashboard Stats Overview Cards ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             Total Contracts <FileText size={14} color="rgba(255,255,255,0.3)" />
@@ -330,7 +330,9 @@ export default function ContractsPage() {
                   border: '1px solid rgba(255, 255, 255, 0.06)',
                   borderRadius: 10,
                   cursor: 'pointer',
-                  transition: 'all 200ms ease'
+                  transition: 'all 200ms ease',
+                  flexWrap: 'wrap',
+                  gap: 12,
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.04)'

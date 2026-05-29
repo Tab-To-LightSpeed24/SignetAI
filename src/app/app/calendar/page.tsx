@@ -229,7 +229,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div style={{ maxWidth: '100%', padding: '32px 40px', color: '#E2E8F0' }}>
+    <div className="px-4 py-6 md:px-10 md:py-8" style={{ maxWidth: '100%', color: '#E2E8F0' }}>
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8">
@@ -266,7 +266,7 @@ export default function CalendarPage() {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 32, alignItems: 'start' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 lg:gap-8" style={{ alignItems: 'start' }}>
           
           {/* LEFT: THE MONTHLY GRID */}
           <div style={{

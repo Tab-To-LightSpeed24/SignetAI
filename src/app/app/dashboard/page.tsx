@@ -548,7 +548,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ maxWidth: '100%', padding: '32px 40px', color: '#E2E8F0', position: 'relative' }}>
+    <div className="px-4 py-6 md:px-10 md:py-8" style={{ maxWidth: '100%', color: '#E2E8F0', position: 'relative' }}>
       
       {/* Toast Panel */}
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99999, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1058,7 +1058,8 @@ export default function DashboardPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 16
+              gap: 16,
+              flexWrap: 'wrap',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Calendar size={18} color="#BA7517" />

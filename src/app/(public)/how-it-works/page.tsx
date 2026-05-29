@@ -48,7 +48,7 @@ export default function HowItWorksPage() {
           <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.65)', maxWidth: 600, margin: '0 auto 64px', lineHeight: 1.65 }}>
             Upload any vendor, buyer, or supplier agreement. Signet AI reads it, scores it, and tells you exactly what to watch for.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 32 }} className="grid-cols-1 md:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {STEPS.map((s, i) => (
               <div key={i} style={{ textAlign: 'center', padding: '36px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16 }}>
                 <div style={{ fontSize: 52, fontFamily: 'var(--font-display)', color: 'rgba(29,158,117,0.2)', lineHeight: 1, marginBottom: 12 }}>{s.step}</div>
@@ -68,7 +68,7 @@ export default function HowItWorksPage() {
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', fontWeight: 400, textAlign: 'center', margin: '0 0 48px 0' }}>
             What Signet AI detects
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 16 }} className="grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {DETECTED.map((item, i) => (
               <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '18px 22px', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#1D9E75', marginBottom: 6 }}>{item.type}</div>
@@ -109,7 +109,7 @@ export default function HowItWorksPage() {
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', fontWeight: 400, margin: '0 0 48px 0' }}>
             Built for your industry
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 20 }} className="grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {INDUSTRIES.map((ind, i) => (
               <Link key={i} href={ind.href} style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', color: '#FFFFFF', textDecoration: 'none', textAlign: 'left', display: 'block' }}>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{ind.name}</div>

@@ -162,7 +162,7 @@ export default function ReferralsPage() {
   }
 
   return (
-    <div style={{ maxWidth: '100%', padding: '32px 40px', color: '#E2E8F0' }}>
+    <div className="px-4 py-6 md:px-10 md:py-8" style={{ maxWidth: '100%', color: '#E2E8F0' }}>
       
       {/* Page Header */}
       <div style={{ marginBottom: 32 }}>
@@ -259,10 +259,7 @@ export default function ReferralsPage() {
           </p>
         </div>
       ) : (
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))',
-          gap: 24
-        }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
           {filteredAdvocates.map(adv => (
             <div
               key={adv.id}

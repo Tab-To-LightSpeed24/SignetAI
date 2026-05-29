@@ -35,15 +35,12 @@ export default function PublicFooter() {
   return (
     <footer style={{ background: '#0D1B2A', color: '#fff' }}>
       <div
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr] gap-8 md:gap-12"
         style={{
           maxWidth: 1200,
           margin: '0 auto',
           padding: '64px 24px 40px',
-          display: 'grid',
-          gridTemplateColumns: '1.5fr 1fr 1fr 1fr',
-          gap: 48,
         }}
-        className="grid-cols-1 md:grid-cols-4"
       >
         {/* ── Column 1: Brand ── */}
         <div>

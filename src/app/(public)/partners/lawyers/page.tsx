@@ -76,7 +76,7 @@ export default function LawyersPage() {
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12, display: 'block', textAlign: 'center' }}>HOW IT WORKS</span>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', fontWeight: 400, textAlign: 'center', margin: '0 0 52px 0' }}>How the partnership works</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28 }} className="grid-cols-1 md:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-7">
             {[
               { step: '1', title: 'Apply and get verified', desc: 'Submit your credentials. We verify your Bar Council enrollment and practice areas.' },
               { step: '2', title: 'Signet AI flags high-risk clauses', desc: "When a user's contract needs expert review, we show \"Get expert review\" with your profile." },
