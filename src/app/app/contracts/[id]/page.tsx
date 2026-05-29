@@ -613,7 +613,7 @@ export default function ContractPage() {
       {/* RESULTS — DUAL PANE */}
       {status === 'done' && result && (
         <div 
-          className="flex flex-col md:flex-row w-full h-auto md:h-[calc(100vh-160px)] md:min-h-[550px]"
+          className="flex flex-col md:flex-row w-full h-auto md:h-[calc(100dvh-160px)] md:min-h-[550px]"
           style={{ gap: isPdfMinimized ? 0 : 28 }}
         >
           
@@ -1847,7 +1847,7 @@ export default function ContractPage() {
           top: 0,
           left: 0,
           width: '100vw',
-          height: '100vh',
+          height: '100dvh',
           background: 'rgba(10, 18, 30, 0.6)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',

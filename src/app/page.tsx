@@ -6,7 +6,7 @@ export default function RootPage() {
   return (
     <>
       <PublicNavbar />
-      <main style={{ minHeight: '100vh', paddingTop: 64 }}>
+      <main style={{ minHeight: '100dvh', paddingTop: 64 }}>
         <HomePageClient />
       </main>
       <PublicFooter />

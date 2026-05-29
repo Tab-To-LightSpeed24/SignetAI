@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function IndiaEuFtaGuidePage() {
   return (
-    <article style={{ background: '#fff', minHeight: '100vh', padding: '0 0 80px 0', color: '#1A202C' }}>
+    <article style={{ background: '#fff', minHeight: '100dvh', padding: '0 0 80px 0', color: '#1A202C' }}>
       {/* Editorial Hero */}
       <header style={{
         background: 'linear-gradient(135deg, #0D1B2A 0%, #1A3048 100%)',

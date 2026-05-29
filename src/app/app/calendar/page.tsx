@@ -315,7 +315,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Scrollable Calendar Grid Container */}
-            <div className="overflow-x-auto w-full">
+            <div className="w-full overflow-x-auto snap-x">
               <div style={{ minWidth: '700px' }}>
                 {/* Weekdays Row */}
                 <div style={{

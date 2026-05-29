@@ -43,10 +43,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${instrumentSans.variable} ${dmSerif.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${instrumentSans.variable} ${dmSerif.variable} ${jetbrainsMono.variable} antialiased overflow-x-hidden w-full`}
         style={{ fontFamily: "var(--font-body), system-ui, sans-serif" }}
       >
-        {children}
+        <div className="overflow-x-hidden w-full max-w-[100vw]">
+          {children}
+        </div>
       </body>
     </html>
   );

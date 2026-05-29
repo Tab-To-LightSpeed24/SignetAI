@@ -15,7 +15,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {/* paddingTop:0 — navbar is transparent/overlay so pages start from the very top */}
       <main
         className="page-transition"
-        style={{ minHeight: '100vh', background: '#0D1B2A' }}
+        style={{ minHeight: '100dvh', background: '#0D1B2A' }}
       >
         {children}
       </main>

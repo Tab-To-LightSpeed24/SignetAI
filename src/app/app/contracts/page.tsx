@@ -408,7 +408,7 @@ export default function ContractsPage() {
           top: 0,
           left: 0,
           width: '100vw',
-          height: '100vh',
+          height: '100dvh',
           background: 'rgba(10, 18, 30, 0.6)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',

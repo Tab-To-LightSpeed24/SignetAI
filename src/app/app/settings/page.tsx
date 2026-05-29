@@ -59,7 +59,7 @@ export default async function SettingsPage() {
   if (!user) {
     return (
       <div style={{ 
-        minHeight: '100vh', 
+        minHeight: '100dvh', 
         background: '#0D1B2A', 
         display: 'flex', 
         alignItems: 'center', 
@@ -91,7 +91,7 @@ export default async function SettingsPage() {
 
   return (
     <div style={{ 
-      minHeight: '100vh', 
+      minHeight: '100dvh', 
       background: 'linear-gradient(135deg, #070e17 0%, #0D1B2A 100%)', 
       color: '#eee', 
       fontFamily: 'system-ui, -apple-system, sans-serif',

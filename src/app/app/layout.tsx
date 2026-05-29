@@ -96,7 +96,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [userEmail, setUserEmail] = useState('')
   const [userInitial, setUserInitial] = useState('U')
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [visible, setVisible] = useState(true)
   const [atTop, setAtTop] = useState(true)
   const lastScrollY = useRef(0)
@@ -214,7 +213,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const barDanger = usagePercent >= 80 ? 'danger' : usagePercent >= 60 ? 'warning' : ''
 
   return (
-    <div className="motion-glow" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="motion-glow overflow-x-hidden w-full max-w-[100vw]" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ═══ TOP NAVBAR ══════════════════════════════════════════════════════ */}
       <header style={{
@@ -383,42 +382,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Link>
       </div>
 
-      {/* ── Hover trigger zone on the left viewport edge ── */}
-      <div
-        className="hidden md:block"
-        onMouseEnter={() => setIsSidebarExpanded(true)}
-        style={{
-          position: 'fixed',
-          top: visible ? 60 : 0,
-          left: 0,
-          bottom: 0,
-          width: 64,
-          zIndex: 45,
-          background: 'transparent',
-          transition: 'top 350ms cubic-bezier(0.16,1,0.3,1)',
-        }}
-      />
+      {/* Mobile Top Bar */}
+      <div className="flex md:hidden w-full h-16 border-b border-gray-800 items-center px-4 justify-between bg-gray-950" style={{ position: 'fixed', top: visible ? 60 : 0, left: 0, right: 0, zIndex: 44 }}>
+        <span className="text-white font-bold text-lg">Signet AI</span>
+        {/* Hamburger menu icon */}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </div>
 
       {/* ═══ BODY: SIDEBAR + CONTENT ════════════════════════════════════════ */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
 
         {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <aside
-          className="hidden md:flex"
-          onMouseEnter={() => setIsSidebarExpanded(true)}
-          onMouseLeave={() => setIsSidebarExpanded(false)}
+          className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0"
           style={{
-            position: 'fixed',
             top: visible ? 60 : 0,
-            left: 0,
-            bottom: 0,
-            width: isSidebarExpanded ? 240 : 64,
             background: 'rgba(9, 17, 30, 0.95)',
             borderRight: '1px solid rgba(255,255,255,0.06)',
-            flexDirection: 'column',
-            padding: isSidebarExpanded ? '20px 12px' : '20px 8px',
+            padding: '20px 12px',
             zIndex: 46,
-            transition: 'width 300ms ease-in-out, padding 300ms ease-in-out, top 350ms cubic-bezier(0.16,1,0.3,1)',
+            transition: 'top 350ms cubic-bezier(0.16,1,0.3,1)',
             overflowY: 'auto',
             overflowX: 'hidden',
           }}
@@ -429,22 +416,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onClick={() => router.push('/app/dashboard')}
             style={{ 
               width: '100%', 
-              padding: isSidebarExpanded ? '10px 16px' : '10px 0', 
+              padding: '10px 16px', 
               fontSize: 14, 
               marginBottom: 24, 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              gap: isSidebarExpanded ? 8 : 0,
+              gap: 8,
               boxShadow: 'none',
             }}
-            title={!isSidebarExpanded ? "Analyse New Contract" : undefined}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span style={{
-              display: isSidebarExpanded ? 'inline' : 'none',
-              whiteSpace: 'nowrap',
-            }}>
+            <span style={{ whiteSpace: 'nowrap' }}>
               Analyse New Contract
             </span>
           </button>
@@ -452,46 +435,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Primary nav */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {PRIMARY_NAV.map(item => (
-              <NavLink key={item.href} label={item.label} href={item.href} isActive={pathname === item.href} collapsed={!isSidebarExpanded} />
+              <NavLink key={item.href} label={item.label} href={item.href} isActive={pathname === item.href} collapsed={false} />
             ))}
           </nav>
 
           {/* Usage indicator */}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16, marginTop: 'auto', overflow: 'hidden' }}>
-            {isSidebarExpanded ? (
-              <>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Contracts this month</span>
-                  <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{usage.used}/{usage.limit}</span>
-                </div>
-                <div className="usage-bar">
-                  <div className={`usage-bar-fill ${barDanger}`} style={{ width: `${usagePercent}%` }} />
-                </div>
-                {usagePercent >= 80 && (
-                  <Link
-                    href="/app/settings/billing"
-                    style={{ display: 'block', marginTop: 8, fontSize: 12, textDecoration: 'none', fontWeight: 500, color: '#E24B4A' }}
-                  >
-                    Upgrade plan now →
-                  </Link>
-                )}
-              </>
-            ) : (
-              <div 
-                style={{ display: 'flex', justifyContent: 'center', cursor: 'pointer' }}
-                title={`Usage: ${usage.used}/${usage.limit} contracts`}
-                onClick={() => router.push('/app/settings/billing')}
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Contracts this month</span>
+              <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{usage.used}/{usage.limit}</span>
+            </div>
+            <div className="usage-bar">
+              <div className={`usage-bar-fill ${barDanger}`} style={{ width: `${usagePercent}%` }} />
+            </div>
+            {usagePercent >= 80 && (
+              <Link
+                href="/app/settings/billing"
+                style={{ display: 'block', marginTop: 8, fontSize: 12, textDecoration: 'none', fontWeight: 500, color: '#E24B4A' }}
               >
-                <div style={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  background: barDanger === 'danger' ? 'rgba(226,75,74,0.1)' : 'rgba(29,158,117,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: barDanger === 'danger' ? '#E24B4A' : '#1D9E75',
-                  fontSize: 11, fontWeight: 700
-                }}>
-                  {usage.used}
-                </div>
-              </div>
+                Upgrade plan now →
+              </Link>
             )}
           </div>
         </aside>
@@ -499,14 +462,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
         <main
           ref={mainRef}
+          className="w-full md:pl-64 flex-1"
           style={{
-            flex: 1,
             overflowY: 'auto',
             background: 'transparent',
             minHeight: 0,
-            paddingLeft: isMobile ? 0 : (isSidebarExpanded ? 240 : 64),
             paddingTop: isMobile ? 108 : 60, // Fixed padding for top fixed header
-            transition: 'padding-left 300ms ease-in-out',
           }}
         >
           <div key={pathname} className="page-transition">
