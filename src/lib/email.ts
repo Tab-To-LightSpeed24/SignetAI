@@ -4,8 +4,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendAdminNotification(subject: string, html: string) {
   return resend.emails.send({
-    from: 'Signet AI <noreply@signetai.in>',
-    to: process.env.ADMIN_EMAIL ?? 'kaushik.vgs@gmail.com',
+    from: 'onboarding@resend.dev', // <-- CHANGED THIS LINE
+    to: process.env.ADMIN_EMAIL ?? 'signetai.support@gmail.com',
     subject,
     html,
   });
@@ -17,7 +17,7 @@ export async function sendUserConfirmation(
   html: string
 ) {
   return resend.emails.send({
-    from: 'Signet AI <noreply@signetai.in>',
+    from: 'onboarding@resend.dev', // <-- CHANGED THIS LINE
     to,
     subject,
     html,

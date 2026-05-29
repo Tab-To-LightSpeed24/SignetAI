@@ -167,7 +167,7 @@ export default function ContactPage() {
             </div>
 
             {[
-              { label: 'Email', val: <a href="mailto:hello@signet-ai.in" style={{ color: '#1D9E75', textDecoration: 'none', fontSize: 15, fontWeight: 500 }}>hello@signet-ai.in</a>, sub: 'We respond within 1 business day' },
+              { label: 'Email', val: <a href="mailto:signetai.support@gmail.com" style={{ color: '#1D9E75', textDecoration: 'none', fontSize: 15, fontWeight: 500 }}>signetai.support@gmail.com</a>, sub: 'We respond within 1 business day' },
               { label: 'Office', val: <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>Chennai, Tamil Nadu</span>, sub: null },
               { label: 'For lawyer partnerships', val: <Link href="/partners/lawyers" style={{ color: '#1D9E75', fontSize: 14, textDecoration: 'none', fontWeight: 500 }}>Apply here →</Link>, sub: null },
             ].map((item, i) => (

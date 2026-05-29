@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { contractDates, reminders, contracts, profiles } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
-import { Resend } from 'resend'
+import { sendUserConfirmation } from '@/lib/email'
 
 export const dynamic = 'force-dynamic' // Ensure it runs dynamically for cron
 
@@ -11,14 +11,7 @@ export async function GET(req: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const apiKey = process.env.RESEND_API_KEY
   const toEmail = process.env.CONTACT_EMAIL
-  const fromEmail = process.env.RESEND_FROM ?? 'Signet AI <onboarding@resend.dev>'
-
-  if (!apiKey) {
-    console.error('[Cron] RESEND_API_KEY is not set. Cannot dispatch reminders.')
-    return NextResponse.json({ error: true, message: 'RESEND_API_KEY not configured' }, { status: 500 })
-  }
 
   if (!toEmail) {
     console.error('[Cron] CONTACT_EMAIL is not set. Cannot dispatch reminders.')
@@ -55,7 +48,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, message: 'No reminders to send.' })
     }
 
-    const resend = new Resend(apiKey)
     let sent = 0
 
     for (const r of activeReminders) {
@@ -77,12 +69,7 @@ export async function GET(req: Request) {
         </div>
       `
 
-      const { error } = await resend.emails.send({
-        from: fromEmail,
-        to: [toEmail],
-        subject,
-        html,
-      })
+      const { error } = await sendUserConfirmation(toEmail, subject, html)
 
       if (error) {
         console.error(`[Cron] Failed to send reminder for contract "${r.contractName}":`, error)
