@@ -3,7 +3,10 @@ import { db } from '@/db'
 import { profiles } from '@/db/schema'
 import { lte, sql } from 'drizzle-orm'
 
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
+  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
   try {
     // Format today as YYYY-MM-DD for standard DATE comparison
     const todayStr = new Date().toISOString().split('T')[0]

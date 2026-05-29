@@ -7,10 +7,8 @@ import { Resend } from 'resend'
 export const dynamic = 'force-dynamic' // Ensure it runs dynamically for cron
 
 export async function GET(req: Request) {
-  // Optional: add cron secret validation
-  const authHeader = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 });
   }
 
   const apiKey = process.env.RESEND_API_KEY
