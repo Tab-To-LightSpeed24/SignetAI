@@ -94,12 +94,12 @@ export default function HomePageClient() {
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1D9E75', display: 'inline-block' }}></span>
               India-EU FTA 2026 - protect your new export agreements
             </span>
-            <h1 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: 56, lineHeight: 1.1, color: '#FFFFFF', fontWeight: 400, letterSpacing: '-0.02em', margin: '0 0 24px 0' }}>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display leading-tight md:leading-none tracking-tight mb-6" style={{ color: '#FFFFFF', fontWeight: 400 }}>
               Sign every contract<br />
               <span style={{ fontStyle: 'italic', color: '#1D9E75', textShadow: '0 0 20px rgba(29,158,117,0.1)' }}>knowing exactly</span><br />
               what you are signing.
             </h1>
-            <p style={{ fontSize: 18, lineHeight: 1.6, color: 'rgba(255,255,255,0.75)', maxWidth: 500, margin: '0 0 32px 0' }}>
+            <p className="text-base md:text-lg lg:text-xl leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.75)', maxWidth: 500 }}>
               Upload any vendor, buyer, or supplier agreement. Signet AI decodes complex legal parameters into clear English and flags critical liabilities before you sign.
             </p>
             <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', margin: '0 0 32px 0', lineHeight: 1.4 }}>

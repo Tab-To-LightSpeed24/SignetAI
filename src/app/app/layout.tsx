@@ -105,6 +105,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const userMenuRef = useRef<HTMLDivElement>(null)
   const fetchedRef = useRef(false) // prevent double-fetch in StrictMode
 
+  const [isMobile, setIsMobile] = useState(true)
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   // ── Install auth interceptor (session-verified, loop-safe) ────────────────
   useEffect(() => {
     const cleanup = installAuthInterceptor(() => supabase.auth.getSession())
@@ -321,8 +330,62 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      {/* Mobile Horizontal Navigation Bar */}
+      <div 
+        className="flex md:hidden items-center gap-4 px-4 overflow-x-auto border-b border-white/10"
+        style={{
+          height: 48,
+          background: 'rgba(9, 17, 30, 0.95)',
+          position: 'fixed',
+          top: visible ? 60 : 0,
+          left: 0,
+          right: 0,
+          zIndex: 44,
+          whiteSpace: 'nowrap',
+          transition: 'top 350ms cubic-bezier(0.16,1,0.3,1)',
+        }}
+      >
+        {PRIMARY_NAV.map(item => {
+          const isActive = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? '#1D9E75' : 'rgba(255,255,255,0.6)',
+                padding: '4px 10px',
+                borderRadius: 4,
+                background: isActive ? 'rgba(29, 158, 117, 0.1)' : 'transparent',
+                textDecoration: 'none',
+                flexShrink: 0
+              }}
+            >
+              {item.label}
+            </Link>
+          )
+        })}
+        <Link
+          href="/app/referrals"
+          style={{
+            fontSize: 13,
+            fontWeight: pathname === '/app/referrals' ? 600 : 500,
+            color: pathname === '/app/referrals' ? '#1D9E75' : 'rgba(255,255,255,0.6)',
+            padding: '4px 10px',
+            borderRadius: 4,
+            background: pathname === '/app/referrals' ? 'rgba(29, 158, 117, 0.1)' : 'transparent',
+            textDecoration: 'none',
+            flexShrink: 0
+          }}
+        >
+          Legal Partners
+        </Link>
+      </div>
+
       {/* ── Hover trigger zone on the left viewport edge ── */}
       <div
+        className="hidden md:block"
         onMouseEnter={() => setIsSidebarExpanded(true)}
         style={{
           position: 'fixed',
@@ -341,6 +404,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <aside
+          className="hidden md:flex"
           onMouseEnter={() => setIsSidebarExpanded(true)}
           onMouseLeave={() => setIsSidebarExpanded(false)}
           style={{
@@ -351,7 +415,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             width: isSidebarExpanded ? 240 : 64,
             background: 'rgba(9, 17, 30, 0.95)',
             borderRight: '1px solid rgba(255,255,255,0.06)',
-            display: 'flex',
             flexDirection: 'column',
             padding: isSidebarExpanded ? '20px 12px' : '20px 8px',
             zIndex: 46,
@@ -441,8 +504,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             overflowY: 'auto',
             background: 'transparent',
             minHeight: 0,
-            paddingLeft: isSidebarExpanded ? 240 : 64,
-            paddingTop: 60, // Fixed padding for top fixed header
+            paddingLeft: isMobile ? 0 : (isSidebarExpanded ? 240 : 64),
+            paddingTop: isMobile ? 108 : 60, // Fixed padding for top fixed header
             transition: 'padding-left 300ms ease-in-out',
           }}
         >

@@ -22,8 +22,8 @@ export default function ContactPage() {
         body: JSON.stringify(form)
       })
       const data = await res.json()
-      if (data.error) {
-        setError(data.message || 'Something went wrong. Please try again.')
+      if (!res.ok || data.success === false || data.error) {
+        setError(data.error || data.message || 'Something went wrong. Please try again.')
       } else {
         setSubmitted(true)
       }

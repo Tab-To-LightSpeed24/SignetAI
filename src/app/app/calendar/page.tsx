@@ -232,7 +232,7 @@ export default function CalendarPage() {
     <div style={{ maxWidth: '100%', padding: '32px 40px', color: '#E2E8F0' }}>
       
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8">
         <div>
           <h1 className="font-display" style={{ fontSize: 30, color: '#fff', margin: '0 0 6px 0', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>
             Renewal Calendar
@@ -249,8 +249,8 @@ export default function CalendarPage() {
               setIsModalOpen(true)
             }
           }}
-          className="btn-primary"
-          style={{ padding: '10px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+          className="btn-primary w-full md:w-auto mt-4 md:mt-0"
+          style={{ padding: '10px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -314,116 +314,121 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Weekdays Row */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-              textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
-              marginBottom: 12
-            }}>
-              {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
-                <div key={day} style={{ padding: '6px 0' }}>{day}</div>
-              ))}
-            </div>
+            {/* Scrollable Calendar Grid Container */}
+            <div className="overflow-x-auto w-full">
+              <div style={{ minWidth: '700px' }}>
+                {/* Weekdays Row */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+                  textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+                  marginBottom: 12
+                }}>
+                  {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+                    <div key={day} style={{ padding: '6px 0' }}>{day}</div>
+                  ))}
+                </div>
 
-            {/* Calendar Days Grid */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: 8
-            }}>
-              {/* Prev Month filler days */}
-              {Array.from({ length: firstDayIndex }).map((_, i) => {
-                const day = prevMonthDays - firstDayIndex + i + 1
-                return (
-                  <div
-                    key={`prev-${day}`}
-                    style={{
-                      height: 80,
-                      padding: 8,
-                      borderRadius: 8,
-                      background: 'transparent',
-                      opacity: 0.15,
-                      border: '1px solid rgba(255,255,255,0.03)',
-                      color: 'var(--text-muted)',
-                      fontSize: 13,
-                    }}
-                  >
-                    {day}
-                  </div>
-                )
-              })}
+                {/* Calendar Days Grid */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: 8
+                }}>
+                  {/* Prev Month filler days */}
+                  {Array.from({ length: firstDayIndex }).map((_, i) => {
+                    const day = prevMonthDays - firstDayIndex + i + 1
+                    return (
+                      <div
+                        key={`prev-${day}`}
+                        style={{
+                          height: 80,
+                          padding: 8,
+                          borderRadius: 8,
+                          background: 'transparent',
+                          opacity: 0.15,
+                          border: '1px solid rgba(255,255,255,0.03)',
+                          color: 'var(--text-muted)',
+                          fontSize: 13,
+                        }}
+                      >
+                        {day}
+                      </div>
+                    )
+                  })}
 
-              {/* Active Month Days */}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1
-                const dayMilestones = getMilestonesForDay(day)
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                const isSelected = selectedDateStr === dateStr
-                const hasMilestones = dayMilestones.length > 0
+                  {/* Active Month Days */}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1
+                    const dayMilestones = getMilestonesForDay(day)
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                    const isSelected = selectedDateStr === dateStr
+                    const hasMilestones = dayMilestones.length > 0
 
-                return (
-                  <div
-                    key={`active-${day}`}
-                    onClick={() => setSelectedDateStr(isSelected ? null : dateStr)}
-                    style={{
-                      height: 80,
-                      padding: 8,
-                      borderRadius: 8,
-                      background: isSelected ? 'rgba(29, 158, 117, 0.08)' : hasMilestones ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)',
-                      border: `1px solid ${isSelected ? 'var(--teal)' : hasMilestones ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      transition: 'all 150ms ease',
-                    }}
-                    onMouseEnter={e => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = hasMilestones ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)'
-                        e.currentTarget.style.borderColor = hasMilestones ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'
-                      }
-                    }}
-                  >
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: hasMilestones ? '700' : '400',
-                      color: isSelected ? 'var(--teal)' : '#fff'
-                    }}>
-                      {day}
-                    </div>
+                    return (
+                      <div
+                        key={`active-${day}`}
+                        onClick={() => setSelectedDateStr(isSelected ? null : dateStr)}
+                        style={{
+                          height: 80,
+                          padding: 8,
+                          borderRadius: 8,
+                          background: isSelected ? 'rgba(29, 158, 117, 0.08)' : hasMilestones ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)',
+                          border: `1px solid ${isSelected ? 'var(--teal)' : hasMilestones ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          transition: 'all 150ms ease',
+                        }}
+                        onMouseEnter={e => {
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!isSelected) {
+                            e.currentTarget.style.background = hasMilestones ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)'
+                            e.currentTarget.style.borderColor = hasMilestones ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'
+                          }
+                        }}
+                      >
+                        <div style={{
+                          fontSize: 13,
+                          fontWeight: hasMilestones ? '700' : '400',
+                          color: isSelected ? 'var(--teal)' : '#fff'
+                        }}>
+                          {day}
+                        </div>
 
-                    {/* Small dot/badge indicators */}
-                    {hasMilestones && (
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
-                        {dayMilestones.slice(0, 3).map((m) => {
-                          const badge = getBadgeStyles(m.dateType)
-                          return (
-                            <span
-                              key={m.id}
-                              style={{
-                                width: 6, height: 6,
-                                borderRadius: '50%',
-                                background: badge.color
-                              }}
-                              title={`${m.contractName} - ${m.dateType}`}
-                            />
-                          )
-                        })}
-                        {dayMilestones.length > 3 && (
-                          <span style={{ fontSize: 9, color: 'var(--text-muted)', lineHeight: '6px' }}>
-                            +{dayMilestones.length - 3}
-                          </span>
+                        {/* Small dot/badge indicators */}
+                        {hasMilestones && (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+                            {dayMilestones.slice(0, 3).map((m) => {
+                              const badge = getBadgeStyles(m.dateType)
+                              return (
+                                <span
+                                  key={m.id}
+                                  style={{
+                                    width: 6, height: 6,
+                                    borderRadius: '50%',
+                                    background: badge.color
+                                  }}
+                                  title={`${m.contractName} - ${m.dateType}`}
+                                />
+                              )
+                            })}
+                            {dayMilestones.length > 3 && (
+                              <span style={{ fontSize: 9, color: 'var(--text-muted)', lineHeight: '6px' }}>
+                                +{dayMilestones.length - 3}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 

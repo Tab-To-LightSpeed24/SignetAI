@@ -180,7 +180,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Page Title & Analysis Button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-7">
         <div>
           <h1 className="font-display" style={{ fontSize: 28, color: '#fff', margin: '0 0 6px 0', fontWeight: 400, fontFamily: 'var(--font-display), serif' }}>
             Contracts Library & Intelligent Search
@@ -191,8 +191,8 @@ export default function ContractsPage() {
         </div>
         <button
           onClick={() => router.push('/app/dashboard')}
-          className="btn-primary"
-          style={{ padding: '10px 18px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6 }}
+          className="btn-primary w-full md:w-auto mt-4 md:mt-0"
+          style={{ padding: '10px 18px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
         >
           <Plus size={15} /> Analyse New
         </button>

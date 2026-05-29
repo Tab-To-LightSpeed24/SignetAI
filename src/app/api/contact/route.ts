@@ -41,7 +41,11 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ success: true, submission: inserted })
-  } catch (err: any) {
-    return NextResponse.json({ error: true, message: err.message }, { status: 500 })
+  } catch (error: any) {
+    console.error("Resend API Error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to send email" },
+      { status: 500 }
+    );
   }
 }
