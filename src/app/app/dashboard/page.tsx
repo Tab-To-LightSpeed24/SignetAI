@@ -930,12 +930,8 @@ export default function DashboardPage() {
 
           {/* 4-Card Analytics Overview Grid */}
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 16,
-              marginBottom: 32,
-            }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+            style={{ marginBottom: 32 }}
           >
             {/* Card 1: Monthly Usage */}
             <div
@@ -1102,14 +1098,15 @@ export default function DashboardPage() {
 
               {/* Table Frame */}
               <div
+                className="overflow-x-auto w-full"
                 style={{
                   borderRadius: 12,
                   border: '1px solid rgba(255,255,255,0.08)',
-                  overflow: 'visible',
                   background: 'rgba(255,255,255,0.01)',
                   minHeight: sortedContracts.length > 0 ? 200 : 'auto',
                 }}
               >
+                <div style={{ minWidth: 720 }}>
                 {/* Table Header */}
                 <div
                   style={{
@@ -1331,6 +1328,7 @@ export default function DashboardPage() {
                     </div>
                   )
                 })}
+                </div>
               </div>
               {/* Sleek action link */}
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>

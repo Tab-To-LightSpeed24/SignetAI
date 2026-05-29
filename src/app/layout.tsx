@@ -29,6 +29,12 @@ export const metadata: Metadata = {
     "Upload any vendor, buyer, or service contract and get a plain-English risk report in 60 seconds. Built for Tamil Nadu exporters, manufacturers, and growing businesses.",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

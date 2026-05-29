@@ -612,19 +612,23 @@ export default function ContractPage() {
 
       {/* RESULTS — DUAL PANE */}
       {status === 'done' && result && (
-        <div style={{ display: 'flex', gap: isPdfMinimized ? 0 : 28, height: 'calc(100vh - 160px)', minHeight: 550 }}>
+        <div 
+          className="flex flex-col md:flex-row w-full h-auto md:h-[calc(100vh-160px)] md:min-h-[550px]"
+          style={{ gap: isPdfMinimized ? 0 : 28 }}
+        >
           
           {/* LEFT PANE: Interactive High-Fidelity Report */}
-          <div id="pdf-export-content" style={{ 
-            flex: isPdfMinimized ? '1 1 100%' : '1 1 45%', 
-            minWidth: 420, 
-            maxWidth: isPdfMinimized ? 'none' : 580, 
-            overflowY: 'auto', 
-            paddingRight: 12, 
-            display: 'flex', 
-            flexDirection: 'column',
-            transition: 'all 300ms ease-in-out'
-          }}>
+          <div 
+            id="pdf-export-content" 
+            className="w-full md:w-[45%] h-[50vh] md:h-full flex flex-col min-w-0 md:min-w-[420px]"
+            style={{ 
+              flex: isPdfMinimized ? '1 1 100%' : '1 1 45%', 
+              maxWidth: isPdfMinimized ? 'none' : 580, 
+              overflowY: 'auto', 
+              paddingRight: 12, 
+              transition: 'all 300ms ease-in-out'
+            }}
+          >
             
             {/* Sticky Page Header */}
             <div style={{
@@ -1653,18 +1657,20 @@ export default function ContractPage() {
           </div>
 
           {/* RIGHT PANE: Original Document */}
-          <div style={{ 
-            flex: isPdfMinimized ? '0 0 0%' : '1 1 55%', 
-            opacity: isPdfMinimized ? 0 : 1,
-            pointerEvents: isPdfMinimized ? 'none' : 'auto',
-            display: 'flex', 
-            flexDirection: 'column', 
-            borderRadius: '8px', 
-            overflow: 'hidden',
-            minWidth: isPdfMinimized ? 0 : 420, 
-            border: isPdfMinimized ? 'none' : '1px solid rgba(255,255,255,0.08)',
-            transition: 'all 500ms cubic-bezier(0.16, 1, 0.3, 1)'
-          }}>
+          <div 
+            className="w-full md:w-[55%] h-[50vh] md:h-full min-w-0 md:min-w-[420px]"
+            style={{ 
+              flex: isPdfMinimized ? '0 0 0%' : '1 1 55%', 
+              opacity: isPdfMinimized ? 0 : 1,
+              pointerEvents: isPdfMinimized ? 'none' : 'auto',
+              display: 'flex', 
+              flexDirection: 'column', 
+              borderRadius: '8px', 
+              overflow: 'hidden',
+              border: isPdfMinimized ? 'none' : '1px solid rgba(255,255,255,0.08)',
+              transition: 'all 500ms cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
             <PdfViewerPane 
               pdfFile={pdfFile} 
               totalPages={totalPages} 
