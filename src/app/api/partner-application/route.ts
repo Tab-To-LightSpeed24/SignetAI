@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { partnerApplications } from '@/db/schema'
-import { sendSubmissionEmail } from '@/lib/mailer'
+import { sendAdminNotification } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
@@ -31,18 +31,28 @@ export async function POST(req: Request) {
       })
       .returning()
 
-    // Trigger SMTP routing, falling back gracefully to DB-only logging if unconfigured
-    await sendSubmissionEmail('partner', {
-      fullName,
-      firmName,
-      barNumber,
+    const data = {
+      full_name: fullName,
+      firm_name: firmName,
+      bar_enrollment: barNumber,
+      city,
       email,
       phone,
-      city,
-      practice: practiceStr,
-      industries: industriesStr,
-      bio,
-    })
+      specializations: practiceStr || '—',
+      bio: bio || '—'
+    };
+
+    await sendAdminNotification(
+      `New lawyer partner application: ${data.full_name}`,
+      `<p><strong>Name:</strong> ${data.full_name}</p>
+       <p><strong>Firm:</strong> ${data.firm_name}</p>
+       <p><strong>Bar No:</strong> ${data.bar_enrollment}</p>
+       <p><strong>City:</strong> ${data.city}</p>
+       <p><strong>Email:</strong> ${data.email}</p>
+       <p><strong>Phone:</strong> ${data.phone}</p>
+       <p><strong>Specializations:</strong> ${data.specializations}</p>
+       <p><strong>Bio:</strong> ${data.bio}</p>`
+    );
 
     return NextResponse.json({ success: true, application: inserted })
   } catch (err: any) {
