@@ -14,10 +14,10 @@ const FAQS = [
 ]
 
 const PLANS = [
-  { name: 'Free', price: '₹0', priceAnnual: '₹0', features: { contracts: '3/month', breakdown: true, risk: true, english: true, counter: false, pdf: false, renewal: false, playbook: false, repo: false, search: false, priority: false, api: false }, cta: 'Start free', href: '/auth/signup?plan=Free', highlighted: false },
-  { name: 'Starter', price: '₹1,999', priceAnnual: '₹1,599', features: { contracts: '15/month', breakdown: true, risk: true, english: true, counter: true, pdf: true, renewal: true, playbook: false, repo: false, search: false, priority: false, api: false }, cta: 'Start 14-day trial', href: '/auth/signup?plan=Starter', highlighted: true },
-  { name: 'Growth', price: '₹4,999', priceAnnual: '₹3,999', features: { contracts: '50/month', breakdown: true, risk: true, english: true, counter: true, pdf: true, renewal: true, playbook: true, repo: true, search: false, priority: false, api: false }, cta: 'Get started', href: '/auth/signup?plan=Growth', highlighted: false },
-  { name: 'Pro', price: '₹9,999', priceAnnual: '₹7,999', features: { contracts: 'Unlimited', breakdown: true, risk: true, english: true, counter: true, pdf: true, renewal: true, playbook: true, repo: true, search: true, priority: true, api: true }, cta: 'Get started', href: '/auth/signup?plan=Pro', highlighted: false },
+  { name: 'Free', price: '₹0', priceAnnual: '₹0', features: { contracts: '3/month', breakdown: true, risk: true, english: true, counter: false, pdf: false, renewal: false, playbook: false, repo: false, search: false, priority: false, api: false }, cta: 'Start free', href: '/login?plan=Free', highlighted: false },
+  { name: 'Starter', price: '₹1,999', priceAnnual: '₹1,599', features: { contracts: '15/month', breakdown: true, risk: true, english: true, counter: true, pdf: true, renewal: true, playbook: false, repo: false, search: false, priority: false, api: false }, cta: 'Start 14-day trial', href: '/login?plan=Starter', highlighted: true },
+  { name: 'Growth', price: '₹4,999', priceAnnual: '₹3,999', features: { contracts: '50/month', breakdown: true, risk: true, english: true, counter: true, pdf: true, renewal: true, playbook: true, repo: true, search: false, priority: false, api: false }, cta: 'Get started', href: '/login?plan=Growth', highlighted: false },
+  { name: 'Pro', price: '₹9,999', priceAnnual: '₹7,999', features: { contracts: 'Unlimited', breakdown: true, risk: true, english: true, counter: true, pdf: true, renewal: true, playbook: true, repo: true, search: true, priority: true, api: true }, cta: 'Get started', href: '/login?plan=Pro', highlighted: false },
 ]
 
 const FEATURE_ROWS = [

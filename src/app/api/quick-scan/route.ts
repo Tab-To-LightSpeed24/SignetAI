@@ -7,6 +7,8 @@ import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+export const maxDuration = 60 // Vercel serverless timeout limit
+
 function getSupabaseStorage() {
   const cookieStore = cookies()
   return createServerClient(
