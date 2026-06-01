@@ -28,6 +28,8 @@ export const contracts = pgTable('contracts', {
   riskLabel: text('risk_label'),
   summary: text('summary'),
   contractType: text('contract_type'),
+  requiresLawyerReview: boolean('requires_lawyer_review').default(false),
+  lawyerReferralReasoning: text('lawyer_referral_reasoning'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   analyzedAt: timestamp('analyzed_at', { withTimezone: true }),
 });

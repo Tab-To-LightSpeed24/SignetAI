@@ -51,6 +51,8 @@ export async function GET(
         riskLabel: contract.riskLabel,
         summary: contract.summary,
         contractType: contract.contractType,
+        requiresLawyerReview: contract.requiresLawyerReview ?? false,
+        lawyerReferralReasoning: contract.lawyerReferralReasoning ?? null,
       },
       clauses: clauseRecords.map(c => ({
         id: c.id,

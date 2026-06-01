@@ -48,6 +48,8 @@ interface AnalysisResult {
     riskLabel: string
     summary: string
     contractType: string
+    requiresLawyerReview: boolean
+    lawyerReferralReasoning: string | null
   }
   clauses: ClauseResult[]
   dates?: {
@@ -62,17 +64,17 @@ interface AnalysisResult {
 
 function riskBorderColor(score: number | undefined): string {
   if (!score) return 'rgba(255,255,255,0.08)'
-  return score >= 7 ? '#E24B4A' : score >= 4 ? '#BA7517' : '#639922'
+  return score >= 85 ? '#E24B4A' : score >= 70 ? '#E24B4A' : score >= 31 ? '#BA7517' : '#639922'
 }
 
 function riskLabel(score: number | undefined): string {
   if (!score) return 'Unknown'
-  return score >= 7 ? 'HIGH RISK' : score >= 4 ? 'MEDIUM RISK' : 'LOW RISK'
+  return score >= 85 ? 'CRITICAL RISK' : score >= 70 ? 'HIGH RISK' : score >= 31 ? 'MEDIUM RISK' : 'LOW RISK'
 }
 
 function riskEmoji(score: number | undefined): React.ReactNode {
   if (!score) return <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.4)', display: 'inline-block' }} />
-  const color = score >= 7 ? '#E24B4A' : score >= 4 ? '#BA7517' : '#639922'
+  const color = score >= 70 ? '#E24B4A' : score >= 31 ? '#BA7517' : '#639922'
   return <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
 }
 
@@ -1077,17 +1079,29 @@ export default function ContractPage() {
                         strokeWidth="8" 
                         fill="transparent" 
                         strokeDasharray={2 * Math.PI * 40}
-                        strokeDashoffset={2 * Math.PI * 40 - (Math.min(overallRisk, 10) / 10) * 2 * Math.PI * 40}
+                        strokeDashoffset={2 * Math.PI * 40 - (Math.min(overallRisk, 100) / 100) * 2 * Math.PI * 40}
                         strokeLinecap="round"
                         style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
                       />
                     </svg>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: 22, fontWeight: 600, color: '#fff', lineHeight: 1 }}>{overallRisk}</span>
-                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontWeight: 500 }}>/ 10</span>
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontWeight: 500 }}>/ 100</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: '0.04em' }}>OVERALL RISK</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: '0.04em' }}>RISK SCORE</span>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 100,
+                    color: riskColor,
+                    background: overallRisk >= 85 ? 'rgba(226,75,74,0.12)' : overallRisk >= 70 ? 'rgba(226,75,74,0.08)' : overallRisk >= 31 ? 'rgba(186,117,23,0.1)' : 'rgba(99,153,34,0.1)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}>
+                    {result.contract.riskLabel || (overallRisk >= 85 ? 'Critical' : overallRisk >= 70 ? 'High' : overallRisk >= 31 ? 'Medium' : 'Low')}
+                  </span>
                 </div>
 
               </div>
@@ -1113,6 +1127,60 @@ export default function ContractPage() {
               </div>
 
             </div>
+
+            {/* LAWYER REFERRAL BANNER — shown only when AI flags it as critical */}
+            {result.contract.requiresLawyerReview && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(226,75,74,0.12) 0%, rgba(186,117,23,0.12) 100%)',
+                border: '1px solid rgba(226,75,74,0.35)',
+                borderLeft: '4px solid #E24B4A',
+                borderRadius: '12px',
+                padding: '20px 22px',
+                marginBottom: 20,
+                boxSizing: 'border-box',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                  <div style={{ flexShrink: 0, marginTop: 2 }}>
+                    <AlertOctagon size={22} color="#E24B4A" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#E24B4A', textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠ Legal Counsel Required</span>
+                      <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(226,75,74,0.15)', color: '#E24B4A', borderRadius: 100, fontWeight: 600 }}>CRITICAL RISK</span>
+                    </div>
+                    <p style={{ margin: '0 0 14px 0', fontSize: 13.5, color: 'rgba(255,255,255,0.82)', lineHeight: 1.65 }}>
+                      {result.contract.lawyerReferralReasoning}
+                    </p>
+                    <button
+                      onClick={() => router.push('/partners/lawyers')}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '9px 18px',
+                        background: 'linear-gradient(135deg, #E24B4A, #BA3A38)',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(226,75,74,0.3)',
+                        transition: 'all 150ms ease',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)', e.currentTarget.style.boxShadow = '0 6px 16px rgba(226,75,74,0.45)')}
+                      onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)', e.currentTarget.style.boxShadow = '0 4px 12px rgba(226,75,74,0.3)')}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      Consult Partnered Lawyer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* SECTION B: KEY DATES ALERT PANEL (Shown only if datesList exists) */}
             <div style={{

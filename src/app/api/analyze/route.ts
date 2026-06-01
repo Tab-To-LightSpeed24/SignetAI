@@ -93,13 +93,16 @@ const RESPONSE_SCHEMA = {
         required: ["clauseType", "originalText", "plainEnglish", "riskScore", "pageNumber", "recommendation", "isPlaybookViolation"],
       },
     },
-    overallRisk: { type: "INTEGER" as const },
-    riskLabel: { type: "STRING" as const },
+    overallRisk: { type: "INTEGER" as const, description: "Legacy 1-10 risk score for backward compat" },
+    overallRiskScore: { type: "INTEGER" as const, description: "Aggregate risk score 0-100 per scoring engine rules" },
+    riskLabel: { type: "STRING" as const, description: "One of: Low, Medium, High, Critical" },
     summary: { type: "STRING" as const },
     autoRenewalDate: { type: "STRING" as const },
     expirationDate: { type: "STRING" as const },
+    requiresLawyerReview: { type: "BOOLEAN" as const },
+    lawyerReferralReasoning: { type: "STRING" as const },
   },
-  required: ["clauses", "overallRisk", "riskLabel", "summary"],
+  required: ["clauses", "overallRisk", "overallRiskScore", "riskLabel", "summary", "requiresLawyerReview", "lawyerReferralReasoning"],
 }
 
 function buildSystemInstruction(perspective: string, playbookRules: string, bespokeConstraints: string): string {
@@ -142,7 +145,25 @@ Overall:
 - autoRenewalDate (string): Explicit auto-renewal date in YYYY-MM-DD format if explicitly stated in the contract, otherwise empty string "".
 - expirationDate (string): Explicit expiration date in YYYY-MM-DD format if explicitly stated in the contract, otherwise empty string "".
 
-CRITICAL: If a specific expiration or renewal date is NOT explicitly typed in the contract text, you MUST return an empty string "" for the date fields. Do not calculate, assume, or fabricate dates under any circumstances. DO NOT hallucinate.`
+CRITICAL: If a specific expiration or renewal date is NOT explicitly typed in the contract text, you MUST return an empty string "" for the date fields. Do not calculate, assume, or fabricate dates under any circumstances. DO NOT hallucinate.
+
+### OVERALL RISK SCORING & REFERRAL ENGINE
+After extracting and scoring individual clauses, calculate the 'overallRiskScore' (0-100) and 'riskLabel' for the entire contract using these rules:
+1. QUANTITY OF RISK: Start with a baseline score of 0. Add 15 points for every clause scored as "High" risk (riskScore >= 7), and 5 points for every "Medium" risk (riskScore 4-6). Cap at 100.
+2. CONTEXTUAL MULTIPLIERS (Existential Threats): Immediately elevate the overall score to 85+ (Critical) if you detect any of the following threats to an industrial SME:
+   - Unlimited liability or indemnity without financial caps.
+   - Unilateral price modification rights by the buyer.
+   - IP ownership transfer of the SME's background technology.
+   - Auto-renewal traps with less than 30 days opt-out notice.
+3. RISK LABELS: 0-30 = Low, 31-69 = Medium, 70-84 = High, 85-100 = Critical.
+4. Also output the legacy 'overallRisk' field as an integer from 1-10 (overallRiskScore / 10, rounded) for backward compatibility.
+
+### LAWYER REFERRAL TRIGGER ('requiresLawyerReview')
+Set requiresLawyerReview to TRUE if AND ONLY IF:
+- The overallRiskScore is >= 75.
+- OR the contract contains complex jurisdictional disputes outside of India.
+- OR the financial damage potential of a single flagged clause could bankrupt an SME (e.g., massive OEM delay penalties, unlimited indemnity exposure).
+If TRUE, write a concise, urgent 'lawyerReferralReasoning' (2-3 sentences) explaining exactly which clause makes this too dangerous to sign without a legal expert, addressed directly to an SME owner. If FALSE, set lawyerReferralReasoning to an empty string "".`
 }
 
 export async function POST(req: Request) {
@@ -405,11 +426,29 @@ export async function POST(req: Request) {
     }
 
     // Update contract with flat top-level fields
+    // overallRiskScore is the new 0-100 engine score; fall back to scaling legacy overallRisk (1-10) if model didn't return it
+    const computedOverallRiskScore = typeof parsedResponse.overallRiskScore === 'number'
+      ? Math.min(100, Math.max(0, parsedResponse.overallRiskScore))
+      : Math.min(100, Math.max(0, (parsedResponse.overallRisk ?? 0) * 10))
+
+    // Derive the canonical riskLabel from the 0-100 score if model returned a well-known string
+    const validRiskLabels = ['Low', 'Medium', 'High', 'Critical']
+    const canonicalRiskLabel = validRiskLabels.includes(parsedResponse.riskLabel)
+      ? parsedResponse.riskLabel
+      : computedOverallRiskScore >= 85 ? 'Critical'
+      : computedOverallRiskScore >= 70 ? 'High'
+      : computedOverallRiskScore >= 31 ? 'Medium'
+      : 'Low'
+
     await db.update(contracts).set({
       status: 'done',
-      overallRisk: parsedResponse.overallRisk,
-      riskLabel: parsedResponse.overallRisk >= 7 ? 'high' : parsedResponse.overallRisk >= 4 ? 'medium' : 'low',
+      overallRisk: computedOverallRiskScore,
+      riskLabel: canonicalRiskLabel,
       summary: parsedResponse.summary,
+      requiresLawyerReview: parsedResponse.requiresLawyerReview === true,
+      lawyerReferralReasoning: parsedResponse.requiresLawyerReview === true
+        ? (parsedResponse.lawyerReferralReasoning || null)
+        : null,
       analyzedAt: new Date()
     }).where(eq(contracts.id, contractId))
 
