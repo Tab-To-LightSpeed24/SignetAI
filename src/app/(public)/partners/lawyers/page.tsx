@@ -97,55 +97,132 @@ export default function LawyersPage() {
         <div style={{ maxWidth: 660, margin: '0 auto', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '40px 36px' }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: '#FFFFFF', fontWeight: 400, margin: '0 0 32px 0' }}>Apply to join the network</h2>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {[
-              { label: 'Full name *', key: 'fullName', type: 'text' },
-              { label: 'Law firm name *', key: 'firmName', type: 'text' },
-              { label: 'Bar Council enrollment number *', key: 'barNumber', type: 'text' },
-              { label: 'City / District *', key: 'city', type: 'text' },
-              { label: 'Phone number *', key: 'phone', type: 'tel' },
-              { label: 'Email address *', key: 'email', type: 'email' },
-            ].map(field => (
-              <div key={field.key}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>{field.label}</label>
-                <input type={field.type} required value={(formData as any)[field.key]} onChange={e => setFormData({ ...formData, [field.key]: e.target.value })} style={inputStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
-                />
-              </div>
-            ))}
 
+            {/* Full name */}
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 10, letterSpacing: '0.04em' }}>Areas of practice</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {['Commercial', 'Contracts', 'Export/Import', 'Intellectual Property', 'Employment', 'Real Estate', 'Other'].map(p => (
-                  <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={formData.practice.includes(p)} onChange={() => setFormData({ ...formData, practice: formData.practice.includes(p) ? formData.practice.filter(x => x !== p) : [...formData.practice, p] })} /> {p}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 10, letterSpacing: '0.04em' }}>Industries served</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {['Auto components', 'Garments/Textiles', 'IT/Software', 'Pharma', 'Manufacturing', 'Other'].map(p => (
-                  <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={formData.industries.includes(p)} onChange={() => setFormData({ ...formData, industries: formData.industries.includes(p) ? formData.industries.filter(x => x !== p) : [...formData.industries, p] })} /> {p}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Brief bio (200 chars max)</label>
-              <textarea maxLength={200} value={formData.bio} onChange={e => setFormData({ ...formData, bio: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+              <label htmlFor="partner-fullName" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Full name *</label>
+              <input
+                id="partner-fullName" name="fullName" type="text" required
+                value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                style={inputStyle}
                 onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
                 onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
               />
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
-              <input type="checkbox" required checked={formData.agreed} onChange={() => setFormData({ ...formData, agreed: !formData.agreed })} style={{ marginTop: 2 }} />
+            {/* Firm name */}
+            <div>
+              <label htmlFor="partner-firmName" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Law firm name *</label>
+              <input
+                id="partner-firmName" name="firmName" type="text" required
+                value={formData.firmName} onChange={e => setFormData({ ...formData, firmName: e.target.value })}
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* Bar number */}
+            <div>
+              <label htmlFor="partner-barNumber" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Bar Council enrollment number *</label>
+              <input
+                id="partner-barNumber" name="barNumber" type="text" required
+                value={formData.barNumber} onChange={e => setFormData({ ...formData, barNumber: e.target.value })}
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* City */}
+            <div>
+              <label htmlFor="partner-city" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>City / District *</label>
+              <input
+                id="partner-city" name="city" type="text" required
+                value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })}
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label htmlFor="partner-phone" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Phone number *</label>
+              <input
+                id="partner-phone" name="phone" type="tel" required
+                value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label htmlFor="partner-email" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Email address *</label>
+              <input
+                id="partner-email" name="email" type="email" required
+                value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* Areas of practice */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 10, letterSpacing: '0.04em' }}>Areas of practice</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {['Commercial', 'Contracts', 'Export/Import', 'Intellectual Property', 'Employment', 'Real Estate', 'Other'].map(p => (
+                  <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox" name="practice" value={p}
+                      checked={formData.practice.includes(p)}
+                      onChange={() => setFormData({ ...formData, practice: formData.practice.includes(p) ? formData.practice.filter(x => x !== p) : [...formData.practice, p] })}
+                    /> {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Industries */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 10, letterSpacing: '0.04em' }}>Industries served</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {['Auto components', 'Garments/Textiles', 'IT/Software', 'Pharma', 'Manufacturing', 'Other'].map(p => (
+                  <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox" name="industries" value={p}
+                      checked={formData.industries.includes(p)}
+                      onChange={() => setFormData({ ...formData, industries: formData.industries.includes(p) ? formData.industries.filter(x => x !== p) : [...formData.industries, p] })}
+                    /> {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label htmlFor="partner-bio" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Brief bio (200 chars max)</label>
+              <textarea
+                id="partner-bio" name="bio"
+                maxLength={200} value={formData.bio}
+                onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+                onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            {/* Agreement */}
+            <label htmlFor="partner-agreed" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
+              <input
+                id="partner-agreed" name="agreed" type="checkbox" required
+                checked={formData.agreed}
+                onChange={() => setFormData({ ...formData, agreed: !formData.agreed })}
+                style={{ marginTop: 2 }}
+              />
               I confirm I am a licensed advocate registered with the Bar Council of Tamil Nadu
             </label>
 

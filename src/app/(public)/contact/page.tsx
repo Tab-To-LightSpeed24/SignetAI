@@ -78,48 +78,85 @@ export default function ContactPage() {
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 36 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: '#FFFFFF', fontWeight: 400, margin: '0 0 28px 0' }}>Send us a message</h2>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {[
-                { label: 'Name *', key: 'name', type: 'text' },
-                { label: 'Email *', key: 'email', type: 'email' },
-                { label: 'Company name', key: 'company', type: 'text', required: false },
-              ].map(f => (
-                <div key={f.key}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>{f.label}</label>
-                  <input type={f.type} required={f.required !== false} value={(form as any)[f.key]} onChange={e => setForm({ ...form, [f.key]: e.target.value })} style={inputStyle}
-                    onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
-                    onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
-                  />
-                </div>
-              ))}
 
+              {/* Name */}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 8, letterSpacing: '0.04em' }}>I am a:</label>
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  {['Business owner / SME', 'Lawyer / Legal professional', 'Investor', 'Other'].map(r => (
-                    <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: 'rgba(255,255,255,0.7)' }}>
-                      <input type="radio" name="role" checked={form.role === r} onChange={() => setForm({ ...form, role: r })} /> {r}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Subject *</label>
-                <select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} style={{ ...inputStyle }}>
-                  {['General enquiry', 'Product question', 'Partnership (Law firm)', 'Press / Media', 'Other'].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Message *</label>
-                <textarea required value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={4} style={{ ...inputStyle, resize: 'vertical', minHeight: 110 }}
+                <label htmlFor="contact-name" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Name *</label>
+                <input
+                  id="contact-name" name="name" type="text" required
+                  value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                  style={inputStyle}
                   onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
                   onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
                 />
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.newsletter} onChange={() => setForm({ ...form, newsletter: !form.newsletter })} />
+              {/* Email */}
+              <div>
+                <label htmlFor="contact-email" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Email *</label>
+                <input
+                  id="contact-email" name="email" type="email" required
+                  value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+                  style={inputStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                />
+              </div>
+
+              {/* Company */}
+              <div>
+                <label htmlFor="contact-company" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Company name</label>
+                <input
+                  id="contact-company" name="company" type="text"
+                  value={form.company} onChange={e => setForm({ ...form, company: e.target.value })}
+                  style={inputStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                />
+              </div>
+
+              {/* Role */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 8, letterSpacing: '0.04em' }}>I am a:</label>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  {['Business owner / SME', 'Lawyer / Legal professional', 'Investor', 'Other'].map(r => (
+                    <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: 'rgba(255,255,255,0.7)' }}>
+                      <input type="radio" name="role" value={r} checked={form.role === r} onChange={() => setForm({ ...form, role: r })} /> {r}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label htmlFor="contact-subject" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Subject *</label>
+                <select
+                  id="contact-subject" name="subject" required
+                  value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })}
+                  style={{ ...inputStyle }}
+                >
+                  {['General enquiry', 'Product question', 'Partnership (Law firm)', 'Press / Media', 'Other'].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              {/* Message */}
+              <div>
+                <label htmlFor="contact-message" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 6, letterSpacing: '0.04em' }}>Message *</label>
+                <textarea
+                  id="contact-message" name="message" required
+                  value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
+                  rows={4} style={{ ...inputStyle, resize: 'vertical', minHeight: 110 }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(29,158,117,0.5)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                />
+              </div>
+
+              {/* Newsletter */}
+              <label htmlFor="contact-newsletter" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+                <input
+                  id="contact-newsletter" name="newsletter" type="checkbox"
+                  checked={form.newsletter} onChange={() => setForm({ ...form, newsletter: !form.newsletter })}
+                />
                 Subscribe to newsletter
               </label>
 

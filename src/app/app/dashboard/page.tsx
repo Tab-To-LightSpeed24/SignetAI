@@ -462,6 +462,32 @@ export default function DashboardPage() {
     }
   }
 
+  const handleRetryAnalysis = async (contractId: string) => {
+    try {
+      showToast('Retrying analysis...', 'info')
+      
+      // Optimistically update the UI to show it's analyzing
+      setContractsList(prev => prev.map(c => c.id === contractId ? { ...c, status: 'analyzing' } : c))
+
+      const headers = await getAuthHeader()
+      const res = await fetch(`/api/contracts/${contractId}/reanalyze`, {
+        method: 'POST',
+        headers
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.message || data.error || 'Failed to re-analyze contract')
+      }
+      
+      showToast('Risk analysis completed successfully!', 'success')
+      fetchDashboardData()
+    } catch (err: any) {
+      showToast(err.message || 'Failed to re-analyze contract', 'error')
+      fetchDashboardData() // Revert optimistic update
+    }
+  }
+
   const cancelPreFlight = () => {
     setStatus('idle')
     setActiveContractId(null)
@@ -1160,11 +1186,11 @@ export default function DashboardPage() {
                   const statusLabel = contract.status === 'done' ? 'Complete'
                     : contract.status === 'analyzing' ? 'Analysing'
                     : contract.status === 'error' ? 'Error'
-                    : contract.status === 'pending_capacity' ? 'High Demand'
+                    : contract.status === 'failed_capacity' ? 'Unavailable'
                     : 'Pending'
                   const statusColor = contract.status === 'done' ? '#639922'
                     : contract.status === 'error' ? '#E24B4A'
-                    : contract.status === 'pending_capacity' ? '#BA7517'
+                    : contract.status === 'failed_capacity' ? '#BA7517'
                     : '#BA7517'
 
                   return (
@@ -1276,21 +1302,41 @@ export default function DashboardPage() {
                               flexDirection: 'column',
                             }}
                           >
-                            {(contract.status === 'pending' || contract.status === 'analyzing' || contract.status === 'pending_capacity') ? (
-                              <button
-                                onClick={(e) => { 
-                                  e.stopPropagation()
-                                  e.preventDefault()
-                                  setOpenMenuId(null); 
-                                  setContractToDelete({ id: contract.id, name: contract.name || 'Unnamed contract', isCancel: true })
-                                  setDeleteModalOpen(true)
-                                }}
-                                style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#BA7517', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(186,117,23,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                              >
-                                <X size={14} /> Cancel Analysis
-                              </button>
+                            {(contract.status === 'pending' || contract.status === 'analyzing' || contract.status === 'failed_capacity') ? (
+                              <>
+                                {contract.status === 'failed_capacity' && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { 
+                                        e.stopPropagation()
+                                        e.preventDefault()
+                                        setOpenMenuId(null); 
+                                        handleRetryAnalysis(contract.id)
+                                      }}
+                                      style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#BA7517', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(186,117,23,0.08)'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <Play size={14} /> Retry Analysis
+                                    </button>
+                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', margin: '3px 0' }} />
+                                  </>
+                                )}
+                                <button
+                                  onClick={(e) => { 
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    setOpenMenuId(null); 
+                                    setContractToDelete({ id: contract.id, name: contract.name || 'Unnamed contract', isCancel: true })
+                                    setDeleteModalOpen(true)
+                                  }}
+                                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#BA7517', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(186,117,23,0.08)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <X size={14} /> Cancel Analysis
+                                </button>
+                              </>
                             ) : (
                               <>
                                 <button

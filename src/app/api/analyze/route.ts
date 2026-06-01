@@ -26,24 +26,30 @@ function getSupabaseStorage() {
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' })
 
+// Safety cap: hard-enforce a 50k char limit to reduce token payload and lower the risk of
+// Google free-tier dropping the connection. A console.warn fires whenever a document is cut.
+const MAX_CONTRACT_CHARS = 50_000
+
+// Max wall-time budget for retries: 1500ms + 3000ms = 4500ms of sleep across 2 retries.
+// This keeps the total pipeline well under Vercel's 60-second execution ceiling.
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  retries = 3,
-  delay = 1000,
-  backoffFactor = 2.5
+  retries = 2,
+  delay = 1500,
+  backoffFactor = 2.0
 ): Promise<T> {
   let currentDelay = delay
   for (let i = 0; i <= retries; i++) {
     try {
       return await fn()
     } catch (error: any) {
-      const is503 = error.status === 503 || 
-                    error.code === 503 || 
-                    error.status === 429 || 
+      const is503 = error.status === 503 ||
+                    error.code === 503 ||
+                    error.status === 429 ||
                     error.code === 429 ||
                     (error.message && (
-                      error.message.includes('503') || 
-                      error.message.includes('429') || 
+                      error.message.includes('503') ||
+                      error.message.includes('429') ||
                       error.message.includes('UNAVAILABLE') ||
                       error.message.includes('high demand')
                     ))
@@ -52,6 +58,13 @@ async function retryWithBackoff<T>(
         await new Promise(resolve => setTimeout(resolve, currentDelay))
         currentDelay *= backoffFactor
         continue
+      }
+      // Final retry exhausted — surface a structured 503 so the outer catch can return cleanly
+      // rather than letting the function hang until Vercel kills it with a 504.
+      if (is503) {
+        const capacityError: any = new Error('Gemini capacity exceeded after all retries')
+        capacityError.isCapacityError = true
+        throw capacityError
       }
       throw error
     }
@@ -255,11 +268,16 @@ export async function POST(req: Request) {
 
           const minTextLength = Math.max(1000, pageCount * 150)
           if (textContent.trim().length > minTextLength) {
-            console.log('--- PDF TEXT EXTRACTED SUCCESSFULLY, sending to Gemini ---', textContent.substring(0, 100))
+            let safeTextContent = textContent
+            if (textContent.length > MAX_CONTRACT_CHARS) {
+              console.warn('--- CONTRACT TRUNCATED TO 50K CHARACTERS FOR SAFETY ---')
+              safeTextContent = textContent.substring(0, MAX_CONTRACT_CHARS) + '\n\n[CONTRACT TRUNCATED FOR PROCESSING — analyze only the text provided above]'
+            }
+            console.log('--- PDF TEXT EXTRACTED SUCCESSFULLY, sending to Gemini ---', safeTextContent.substring(0, 100))
             const result = await retryWithBackoff(() => ai.models.generateContent({
               model: 'gemini-2.5-flash',
               contents: [
-                systemInstruction + "\n\nContract text:\n" + textContent,
+                systemInstruction + "\n\nContract text:\n" + safeTextContent,
               ],
               config: {
                 responseMimeType: "application/json",
@@ -287,7 +305,12 @@ export async function POST(req: Request) {
           }
         } else if (filename.endsWith('.docx')) {
           const textResult = await mammoth.extractRawText({ buffer })
-          const textContent = textResult.value
+          const rawDocxText = textResult.value
+          let textContent = rawDocxText
+          if (rawDocxText.length > MAX_CONTRACT_CHARS) {
+            console.warn('--- CONTRACT TRUNCATED TO 50K CHARACTERS FOR SAFETY ---')
+            textContent = rawDocxText.substring(0, MAX_CONTRACT_CHARS) + '\n\n[CONTRACT TRUNCATED FOR PROCESSING — analyze only the text provided above]'
+          }
 
           console.log('--- DOCX EXTRACTED, sending to Gemini ---', textContent.substring(0, 100))
 
@@ -305,7 +328,12 @@ export async function POST(req: Request) {
           if (!result.text) throw new Error('Gemini returned empty response')
           parsedResponse = JSON.parse(result.text)
         } else if (filename.endsWith('.txt')) {
-          const textContent = buffer.toString('utf-8')
+          const rawTxtText = buffer.toString('utf-8')
+          let textContent = rawTxtText
+          if (rawTxtText.length > MAX_CONTRACT_CHARS) {
+            console.warn('--- CONTRACT TRUNCATED TO 50K CHARACTERS FOR SAFETY ---')
+            textContent = rawTxtText.substring(0, MAX_CONTRACT_CHARS) + '\n\n[CONTRACT TRUNCATED FOR PROCESSING — analyze only the text provided above]'
+          }
           const result = await retryWithBackoff(() => ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
@@ -331,23 +359,25 @@ export async function POST(req: Request) {
         status: geminiError?.status,
         error: geminiError
       })
-      const is503Or429 = geminiError.status === 503 || 
-                         geminiError.code === 503 || 
-                         geminiError.status === 429 || 
+      const is503Or429 = geminiError.isCapacityError === true ||
+                         geminiError.status === 503 ||
+                         geminiError.code === 503 ||
+                         geminiError.status === 429 ||
                          geminiError.code === 429 ||
                          (geminiError.message && (
-                           geminiError.message.includes('503') || 
-                           geminiError.message.includes('429') || 
+                           geminiError.message.includes('503') ||
+                           geminiError.message.includes('429') ||
                            geminiError.message.includes('UNAVAILABLE') ||
-                           geminiError.message.includes('high demand')
+                           geminiError.message.includes('high demand') ||
+                           geminiError.message.includes('capacity exceeded')
                          ))
       if (is503Or429) {
         try {
-          await db.update(contracts).set({ status: 'pending_capacity' }).where(eq(contracts.id, contractId))
+          await db.update(contracts).set({ status: 'failed_capacity', riskLabel: 'Unavailable' }).where(eq(contracts.id, contractId))
         } catch (dbErr) {
-          console.error('Failed to update contract status to pending_capacity:', dbErr)
+          console.error('Failed to update contract status to failed_capacity:', dbErr)
         }
-        return NextResponse.json({ error: 'capacity_exceeded', message: 'API overload', contractId }, { status: 503 })
+        return NextResponse.json({ error: 'capacity_exceeded', message: 'API overload — please retry in a moment.', contractId }, { status: 503 })
       }
       throw geminiError // rethrow to let the outer catch block handle it (marking status as 'error')
     }
