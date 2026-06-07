@@ -739,7 +739,7 @@ export default function ContractPage() {
                       // The HTML string template (Keep your exact styling)
                       const htmlString = `
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-                        <div style="padding: 44px; background: #FFFFFF; font-family: 'Inter', -apple-system, sans-serif; color: #1E293B; line-height: 1.6; width: 800px;">
+                        <div style="padding: 44px; background: #FFFFFF; font-family: 'Inter', -apple-system, sans-serif; color: #1E293B; line-height: 1.6; max-width: 760px; width: 100%; box-sizing: border-box; margin: 0 auto;">
                           
                           <!-- Premium Branded Header -->
                           <div style="border-bottom: 2px solid #E2E8F0; padding-bottom: 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
@@ -876,10 +876,10 @@ export default function ContractPage() {
                       `;
                       
                       const opt = {
-                        margin: 10,
+                        margin: [10, 14, 10, 14] as [number, number, number, number],
                         filename: `${contractName.replace(/\s+/g, '_')}_Risk_Report.pdf`,
                         image: { type: 'jpeg' as const, quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, logging: false },
+                        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
                         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
                       };
                                             
@@ -1327,7 +1327,9 @@ export default function ContractPage() {
                       <div style={{ flex: 1, paddingRight: 12 }}>
                         <div style={{ fontSize: 11, color: 'rgba(226,75,74,0.7)', fontWeight: 600 }}>PLAYBOOK VIOLATION</div>
                         <div style={{ fontSize: 13, color: '#fff', marginTop: 4, fontStyle: 'italic' }}>
-                          Preference: &ldquo;Playbook rule violation detected in analysis&rdquo;
+                          Preference: &ldquo;{pv.clauseType
+                            ? `This clause type (${pv.clauseType}) violates an industry standard or injected legal benchmark.`
+                            : 'Violates Industry Standard or Injected Legal Benchmark'}&rdquo;
                         </div>
                         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
                           Violated by: {pv.clauseType} (Section {pv.pageNumber ? `${pv.pageNumber}` : `${pv.originalIndex + 1}`})

@@ -142,8 +142,8 @@ const RESPONSE_SCHEMA = {
     overallRiskScore: { type: "INTEGER" as const, description: "Aggregate risk score 0-100 per scoring engine rules" },
     riskLabel: { type: "STRING" as const, description: "One of: Low, Medium, High, Critical" },
     summary: { type: "STRING" as const },
-    autoRenewalDate: { type: "STRING" as const },
-    expirationDate: { type: "STRING" as const },
+    autoRenewalTerm: { type: "STRING" as const },
+    expirationTerm: { type: "STRING" as const },
     requiresLawyerReview: { type: "BOOLEAN" as const },
     lawyerReferralReasoning: { type: "STRING" as const },
   },
@@ -153,6 +153,9 @@ const RESPONSE_SCHEMA = {
 function buildSystemInstruction(perspective: string, playbookRules: string, bespokeConstraints: string, ragBenchmarks: string = ''): string {
   const userPerspective = perspective || 'Neutral'
   return `You are an elite, ruthless corporate lawyer representing the ${userPerspective}. You are exclusively representing the interests of the ${userPerspective}. Ignore risks that only negatively impact the counterparty. Your sole objective is to protect the ${userPerspective} from liability and financial exposure.
+
+SCORING ANCHOR: Do not rate everything as a High Risk. Reserve scores of 8-10 EXCLUSIVELY for existential, company-killing threats (e.g., unlimited liability, catastrophic penalties, IP forfeiture). Standard unfavorable commercial terms should be scored 4-6. Only truly dangerous clauses warrant a 7.
+
 CRITICAL INSTRUCTION: You must analyze this contract strictly from the perspective of the ${userPerspective}.
 Identify the top 5 to 7 most dangerous clauses that pose a liability, financial threat, or operational risk SPECIFICALLY to the ${userPerspective}.
 
@@ -160,7 +163,7 @@ If a clause heavily benefits the ${userPerspective}, DO NOT flag it as a risk.
 
 If the perspective is 'Neutral', flag risks for both sides equally.
 
-CRITICAL: DO NOT HALLUCINATE DATES OR CLAUSES. If an expiration date, renewal notice, or specific risk clause is not explicitly written in the provided text, you MUST return an empty string "" for those JSON fields. Do not guess or extrapolate dates.
+Extract any explicit relative timelines, durations, or hard dates for delivery, expiration, or renewals.
 
 CRITICAL INSTRUCTIONS: 
 1. If a clause scores 7 or higher, you MUST generate formal, business-friendly replacement contract language in the negotiationLanguage field, along with a 1-sentence business justification for the change in the recommendation field. 
@@ -174,7 +177,7 @@ ${bespokeConstraints}
 CRITICAL: If any clause violates the Playbook Non-Negotiables or contradicts the Bespoke Deal Constraints, you MUST flag it. Set isPlaybookViolation to true for that clause in the JSON response. Otherwise, set it to false.
 
 For each clause, provide:
-- clauseType (string): e.g. "Limitation of liability", "Auto-renewal", "Governing law", "Confidentiality", etc.
+- clauseType (string): e.g. "Limitation of liability", "Auto-renewal", "Governing law", "Confidentiality", "Termination for Convenience", "Indemnification", "Payment Terms", etc.
 - originalText (string): The exact text from the contract for this clause.
 - plainEnglish (string): 1 sentence explanation.
 - riskScore (integer 1-10): Risk score.
@@ -185,16 +188,14 @@ For each clause, provide:
 
 Overall:
 - overallRisk (integer 1-10): Overall risk score.
-- riskLabel (string): 'low', 'medium', or 'high'.
+- riskLabel (string): 'Low', 'Medium', 'High', or 'Critical'.
 - summary (string): 3 sentences maximum.
-- autoRenewalDate (string): Explicit auto-renewal date in YYYY-MM-DD format if explicitly stated in the contract, otherwise empty string "".
-- expirationDate (string): Explicit expiration date in YYYY-MM-DD format if explicitly stated in the contract, otherwise empty string "".
-
-CRITICAL: If a specific expiration or renewal date is NOT explicitly typed in the contract text, you MUST return an empty string "" for the date fields. Do not calculate, assume, or fabricate dates under any circumstances. DO NOT hallucinate.
+- autoRenewalTerm (string): The explicit auto-renewal period or date (e.g., "1 year", "30 days notice", or "YYYY-MM-DD"). Empty string "" if not stated.
+- expirationTerm (string): The explicit duration, delivery schedule, or expiration date (e.g., "30 months from NOA", "18 months from commissioning", or "YYYY-MM-DD"). Empty string "" if not stated.
 
 ### OVERALL RISK SCORING & REFERRAL ENGINE
 After extracting and scoring individual clauses, calculate the 'overallRiskScore' (0-100) and 'riskLabel' for the entire contract using these rules:
-1. QUANTITY OF RISK: Start with a baseline score of 0. Add 15 points for every clause scored as "High" risk (riskScore >= 7), and 5 points for every "Medium" risk (riskScore 4-6). Cap at 100.
+1. QUANTITY OF RISK: Start with a baseline score of 0. Add 10 points for every clause scored as "High" risk (riskScore >= 7), and 3 points for every "Medium" risk (riskScore 4-6). Cap at 100.
 2. CONTEXTUAL MULTIPLIERS (Existential Threats): Immediately elevate the overall score to 85+ (Critical) if you detect any of the following threats to an industrial SME:
    - Unlimited liability or indemnity without financial caps.
    - Unilateral price modification rights by the buyer.
@@ -248,12 +249,18 @@ export async function POST(req: Request) {
         formattedPlaybookRules = 'No specific rules.'
       }
     } else {
-      const playbookRecords = await db.select().from(userPlaybook).where(eq(userPlaybook.userId, user.id))
-      if (playbookRecords.length === 0) {
+      try {
+        const playbookRecords = await db.select().from(userPlaybook).where(eq(userPlaybook.userId, user.id))
+        if (playbookRecords.length === 0) {
+          hasPlaybookRules = false
+          formattedPlaybookRules = 'No specific rules.'
+        } else {
+          formattedPlaybookRules = playbookRecords.map((r, i) => `${i + 1}. ${r.ruleText}`).join('\n')
+        }
+      } catch (playbookErr) {
+        console.error('Failed to fetch user playbook from DB — defaulting to no rules:', playbookErr)
         hasPlaybookRules = false
         formattedPlaybookRules = 'No specific rules.'
-      } else {
-        formattedPlaybookRules = playbookRecords.map((r, i) => `${i + 1}. ${r.ruleText}`).join('\n')
       }
     }
 
@@ -293,7 +300,7 @@ export async function POST(req: Request) {
     if (activeContractType === 'oem_supply') {
       userPerspective = 'Supplier'
     }
-    let systemInstruction = buildSystemInstruction(userPerspective, formattedPlaybookRules, formattedBespokeConstraints)
+    let systemInstruction = buildSystemInstruction(userPerspective, formattedPlaybookRules, formattedBespokeConstraints, '')
     if (!hasPlaybookRules) {
       systemInstruction += `\n\nCRITICAL: The user has NO playbook rules. You MUST set \`isPlaybookViolation: false\` for EVERY clause. Do not flag any playbook violations under any circumstances.`
     }
@@ -358,11 +365,14 @@ export async function POST(req: Request) {
           } else {
             console.log('--- FALLING BACK TO DIRECT PDF BASE64 UPLOAD TO GEMINI ---')
             const base64Data = Buffer.from(buffer).toString('base64')
+            // RAG enrichment: use filename + first 500 chars of base64 as proxy snippet since raw text is unavailable
+            const ragContextBase64 = await fetchRAGContext(contract.name + ' ' + Buffer.from(buffer).toString('utf-8', 0, 500))
+            const enrichedInstructionBase64 = systemInstruction + ragContextBase64
             const result = await retryWithBackoff(() => ai.models.generateContent({
               model: 'gemini-2.5-flash',
               contents: [
                 { inlineData: { data: base64Data, mimeType: 'application/pdf' } },
-                systemInstruction,
+                enrichedInstructionBase64,
               ],
               config: {
                 responseMimeType: "application/json",
@@ -507,28 +517,31 @@ export async function POST(req: Request) {
     }).where(eq(contracts.id, contractId))
 
     // Insert contract dates if they are successfully extracted and not empty
-    if (parsedResponse.autoRenewalDate && parsedResponse.autoRenewalDate.trim() !== "") {
+    // autoRenewalTerm / expirationTerm now accept relative strings (e.g. "30 months from NOA")
+    const autoRenewalTerm = parsedResponse.autoRenewalTerm || parsedResponse.autoRenewalDate || ''
+    if (autoRenewalTerm.trim() !== '') {
       try {
         await db.insert(contractDates).values({
           contractId,
           dateType: 'Auto-renewal notice',
-          dateValue: parsedResponse.autoRenewalDate,
-          description: 'Auto-renewal notice deadline extracted from contract text.',
+          dateValue: autoRenewalTerm,
+          description: 'Auto-renewal term or deadline extracted from contract text.',
         })
       } catch (err) {
-        console.error('Failed to insert autoRenewalDate milestone:', err)
+        console.error('Failed to insert autoRenewalTerm milestone:', err)
       }
     }
-    if (parsedResponse.expirationDate && parsedResponse.expirationDate.trim() !== "") {
+    const expirationTerm = parsedResponse.expirationTerm || parsedResponse.expirationDate || ''
+    if (expirationTerm.trim() !== '') {
       try {
         await db.insert(contractDates).values({
           contractId,
           dateType: 'Contract expiration',
-          dateValue: parsedResponse.expirationDate,
-          description: 'Contract expiration deadline extracted from contract text.',
+          dateValue: expirationTerm,
+          description: 'Contract duration or expiration term extracted from contract text.',
         })
       } catch (err) {
-        console.error('Failed to insert expirationDate milestone:', err)
+        console.error('Failed to insert expirationTerm milestone:', err)
       }
     }
 
