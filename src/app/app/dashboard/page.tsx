@@ -34,8 +34,12 @@ const PERSPECTIVES: Perspective[] = ['Tenant', 'Landlord', 'Buyer', 'Seller', 'N
 export default function DashboardPage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
+  // greeting is client-only — computed after mount to avoid server/client hydration mismatch
+  const [greeting, setGreeting] = useState<string | null>(null)
   useEffect(() => {
     setMounted(true)
+    const hour = new Date().getHours()
+    setGreeting(hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening')
   }, [])
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
@@ -96,33 +100,42 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle()
+      const headers = await getAuthHeader()
 
-      if (profileData) {
-        setProfile(profileData)
+      // Fetch usage / profile details via backend API
+      const usageRes = await fetch('/api/billing/usage-check', { headers })
+      let billingData = { plan: 'free', used: 0, limit: 3 }
+      if (usageRes.ok) {
+        const d = await usageRes.json()
+        billingData = {
+          plan: d.plan ?? 'free',
+          used: d.used ?? 0,
+          limit: d.limit ?? 3
+        }
       }
 
-      // Fetch contracts
-      const { data: contractsData } = await supabase
-        .from('contracts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      setProfile({
+        fullName: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
+        plan: billingData.plan,
+        contractsUsedThisCycle: billingData.used,
+        contracts_used_this_cycle: billingData.used
+      })
 
-      if (contractsData) {
-        setContractsList(contractsData)
+      // Fetch contracts list via backend search API (returns all if query is empty)
+      const contractsRes = await fetch('/api/contracts/search', { headers })
+      if (contractsRes.ok) {
+        const data = await contractsRes.json()
+        if (data.success && data.contracts) {
+          setContractsList(data.contracts)
+        }
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
     } finally {
       setLoadingData(false)
     }
-  }, [supabase])
+  }, [supabase, getAuthHeader])
 
   // Fetch playbook rules
   const fetchPlaybookRules = useCallback(async () => {
@@ -509,11 +522,8 @@ export default function DashboardPage() {
   }
 
 
-  // Statistics & Metrics
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours()
-    return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-  }, [])
+  // greeting is populated client-side only (see useEffect above)
+
 
   const firstName = (profile?.full_name || profile?.fullName)?.split(' ')[0] ?? 'there'
   const planLimits: Record<string, number> = { free: 3, starter: 15, growth: 50 }
@@ -521,7 +531,10 @@ export default function DashboardPage() {
   const planLimit = planLimits[planKey] ?? 3
   const contractsUsed = profile?.contracts_used_this_cycle ?? profile?.contractsUsedThisCycle ?? 0
   const usagePercent = Math.min((contractsUsed / planLimit) * 100, 100)
-  const highRiskCount = contractsList.filter((c: any) => ((c.overall_risk || c.overallRisk) ?? 0) >= 7).length
+  const highRiskCount = contractsList.filter((c: any) => {
+    const score = (c.overall_risk || c.overallRisk) ?? 0
+    return score > 10 ? score >= 70 : score >= 7
+  }).length
   const totalContracts = contractsList.length
 
   // Filtered rules matching the detected category
@@ -568,8 +581,10 @@ export default function DashboardPage() {
 
   const contractRiskLabel = (risk: number | undefined) => {
     if (!risk) return { label: 'Unknown', color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.05)' }
-    if (risk >= 7) return { label: 'High', color: '#E24B4A', bg: 'rgba(226,75,74,0.12)' }
-    if (risk >= 4) return { label: 'Medium', color: '#BA7517', bg: 'rgba(186,117,23,0.12)' }
+    const isHigh = risk > 10 ? risk >= 70 : risk >= 7
+    const isMedium = risk > 10 ? risk >= 31 : risk >= 4
+    if (isHigh) return { label: 'High', color: '#E24B4A', bg: 'rgba(226,75,74,0.12)' }
+    if (isMedium) return { label: 'Medium', color: '#BA7517', bg: 'rgba(186,117,23,0.12)' }
     return { label: 'Low', color: '#639922', bg: 'rgba(99,153,34,0.12)' }
   }
 
@@ -947,7 +962,7 @@ export default function DashboardPage() {
                 fontFamily: 'var(--font-display), serif',
               }}
             >
-              {greeting}, {firstName}.
+              {greeting ? `${greeting}, ${firstName}.` : `Hello, ${firstName}.`}
             </h1>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
               {loadingData ? 'Loading your workspace…' : `You have analyzed ${contractsUsed} contract${contractsUsed !== 1 ? 's' : ''} this month. ${highRiskCount} critical risks flagged.`}

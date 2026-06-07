@@ -5,8 +5,10 @@ import { eq, sql } from 'drizzle-orm'
 import mammoth from 'mammoth'
 import { GoogleGenAI } from '@google/genai'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { checkUsageLimit } from '@/lib/usage'
+import { generateEmbedding } from '@/lib/embeddings'
 
 export const maxDuration = 60 // Vercel serverless timeout limit
 
@@ -22,6 +24,49 @@ function getSupabaseStorage() {
       },
     }
   )
+}
+
+/**
+ * Service-role Supabase client — bypasses RLS for trusted server operations
+ * such as querying the legal_knowledge_base via the match_legal_knowledge RPC.
+ * Falls back gracefully if SUPABASE_SERVICE_ROLE_KEY is not yet configured.
+ */
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) return null
+  return createClient(url, serviceKey, { auth: { persistSession: false } })
+}
+
+/**
+ * Fetches the top-3 most relevant legal benchmarks for the given text snippet
+ * from the pgvector legal_knowledge_base table. Returns a formatted string
+ * ready to be injected into the system prompt, or an empty string on failure.
+ */
+async function fetchRAGContext(textSnippet: string): Promise<string> {
+  try {
+    const supabaseAdmin = getSupabaseAdmin()
+    if (!supabaseAdmin) return ''
+
+    const queryEmbedding = await generateEmbedding(textSnippet)
+    const { data: matchedRules, error } = await supabaseAdmin.rpc('match_legal_knowledge', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.5,
+      match_count: 3,
+    })
+
+    if (error || !matchedRules || matchedRules.length === 0) return ''
+
+    const retrievedContextString = (matchedRules as Array<{ industry?: string; rule_type?: string; content: string }>)
+      .map((r, i) => `${i + 1}. [${r.industry ?? 'General'} / ${r.rule_type ?? 'Rule'}]: ${r.content}`)
+      .join('\n')
+
+    return `\n\n### RETRIEVED LEGAL BENCHMARKS\nUse the following real-world industry benchmarks to accurately score the severity of clauses in this contract:\n${retrievedContextString}`
+  } catch (ragErr) {
+    // RAG enrichment is best-effort — never let it break the core analysis pipeline
+    console.warn('RAG context fetch failed (non-fatal):', (ragErr as Error).message)
+    return ''
+  }
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' })
@@ -294,11 +339,14 @@ export async function POST(req: Request) {
               console.warn('--- CONTRACT TRUNCATED TO 50K CHARACTERS FOR SAFETY ---')
               safeTextContent = textContent.substring(0, MAX_CONTRACT_CHARS) + '\n\n[CONTRACT TRUNCATED FOR PROCESSING — analyze only the text provided above]'
             }
+            // RAG enrichment: embed first 1500 chars and fetch relevant legal benchmarks
+            const ragContext = await fetchRAGContext(safeTextContent.substring(0, 1500))
+            const enrichedInstruction = systemInstruction + ragContext
             console.log('--- PDF TEXT EXTRACTED SUCCESSFULLY, sending to Gemini ---', safeTextContent.substring(0, 100))
             const result = await retryWithBackoff(() => ai.models.generateContent({
               model: 'gemini-2.5-flash',
               contents: [
-                systemInstruction + "\n\nContract text:\n" + safeTextContent,
+                enrichedInstruction + "\n\nContract text:\n" + safeTextContent,
               ],
               config: {
                 responseMimeType: "application/json",
@@ -333,12 +381,15 @@ export async function POST(req: Request) {
             textContent = rawDocxText.substring(0, MAX_CONTRACT_CHARS) + '\n\n[CONTRACT TRUNCATED FOR PROCESSING — analyze only the text provided above]'
           }
 
+          // RAG enrichment: embed first 1500 chars and fetch relevant legal benchmarks
+          const ragContextDocx = await fetchRAGContext(textContent.substring(0, 1500))
+          const enrichedInstructionDocx = systemInstruction + ragContextDocx
           console.log('--- DOCX EXTRACTED, sending to Gemini ---', textContent.substring(0, 100))
 
           const result = await retryWithBackoff(() => ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
-              systemInstruction + "\n\nContract text:\n" + textContent,
+              enrichedInstructionDocx + "\n\nContract text:\n" + textContent,
             ],
             config: {
               responseMimeType: "application/json",
@@ -355,10 +406,13 @@ export async function POST(req: Request) {
             console.warn('--- CONTRACT TRUNCATED TO 50K CHARACTERS FOR SAFETY ---')
             textContent = rawTxtText.substring(0, MAX_CONTRACT_CHARS) + '\n\n[CONTRACT TRUNCATED FOR PROCESSING — analyze only the text provided above]'
           }
+          // RAG enrichment for TXT
+          const ragContextTxt = await fetchRAGContext(textContent.substring(0, 1500))
+          const enrichedInstructionTxt = systemInstruction + ragContextTxt
           const result = await retryWithBackoff(() => ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
-              systemInstruction + "\n\nContract text:\n" + textContent,
+              enrichedInstructionTxt + "\n\nContract text:\n" + textContent,
             ],
             config: {
               responseMimeType: "application/json",

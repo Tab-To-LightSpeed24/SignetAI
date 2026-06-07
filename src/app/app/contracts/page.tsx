@@ -20,8 +20,10 @@ function riskBadgeCls(score: number | null): { label: string; color: string; bg:
   if (score === null || score === undefined) {
     return { label: 'Unknown', color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.05)' }
   }
-  if (score >= 7) return { label: 'High Risk', color: '#E24B4A', bg: 'rgba(226,75,74,0.12)' }
-  if (score >= 4) return { label: 'Medium Risk', color: '#BA7517', bg: 'rgba(186,117,23,0.12)' }
+  const isHigh = score > 10 ? score >= 70 : score >= 7
+  const isMedium = score > 10 ? score >= 31 : score >= 4
+  if (isHigh) return { label: 'High Risk', color: '#E24B4A', bg: 'rgba(226,75,74,0.12)' }
+  if (isMedium) return { label: 'Medium Risk', color: '#BA7517', bg: 'rgba(186,117,23,0.12)' }
   return { label: 'Low Risk', color: '#639922', bg: 'rgba(99,153,34,0.12)' }
 }
 
@@ -107,10 +109,15 @@ export default function ContractsPage() {
   const processedContracts = useMemo(() => {
     return [...contracts]
       .filter(c => {
+        const score = c.overall_risk ?? 0
+        const isHigh = score > 10 ? score >= 70 : score >= 7
+        const isMedium = score > 10 ? (score >= 31 && score < 70) : (score >= 4 && score < 7)
+        const isLow = score > 0 && (score > 10 ? score < 31 : score < 4)
+
         if (filterType === 'all') return true
-        if (filterType === 'high') return (c.overall_risk ?? 0) >= 7
-        if (filterType === 'medium') return (c.overall_risk ?? 0) >= 4 && (c.overall_risk ?? 0) < 7
-        if (filterType === 'low') return (c.overall_risk ?? 0) < 4 && (c.overall_risk ?? 0) > 0
+        if (filterType === 'high') return isHigh
+        if (filterType === 'medium') return isMedium
+        if (filterType === 'low') return isLow
         return true
       })
       .sort((a, b) => {
@@ -144,9 +151,20 @@ export default function ContractsPage() {
   }
 
   // Risk Counters
-  const highRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) >= 7).length, [contracts])
-  const mediumRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) >= 4 && (c.overall_risk ?? 0) < 7).length, [contracts])
-  const lowRiskCount = useMemo(() => contracts.filter(c => (c.overall_risk ?? 0) < 4 && (c.overall_risk ?? 0) > 0).length, [contracts])
+  const highRiskCount = useMemo(() => contracts.filter(c => {
+    const score = c.overall_risk ?? 0
+    return score > 10 ? score >= 70 : score >= 7
+  }).length, [contracts])
+
+  const mediumRiskCount = useMemo(() => contracts.filter(c => {
+    const score = c.overall_risk ?? 0
+    return score > 10 ? (score >= 31 && score < 70) : (score >= 4 && score < 7)
+  }).length, [contracts])
+
+  const lowRiskCount = useMemo(() => contracts.filter(c => {
+    const score = c.overall_risk ?? 0
+    return score > 0 && (score > 10 ? score < 31 : score < 4)
+  }).length, [contracts])
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', color: '#E2E8F0' }} className="px-4 py-6 md:px-10 md:py-8">
