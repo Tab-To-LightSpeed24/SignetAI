@@ -150,7 +150,7 @@ const RESPONSE_SCHEMA = {
   required: ["clauses", "overallRisk", "overallRiskScore", "riskLabel", "summary", "requiresLawyerReview", "lawyerReferralReasoning"],
 }
 
-function buildSystemInstruction(perspective: string, playbookRules: string, bespokeConstraints: string): string {
+function buildSystemInstruction(perspective: string, playbookRules: string, bespokeConstraints: string, ragBenchmarks: string = ''): string {
   const userPerspective = perspective || 'Neutral'
   return `You are an elite, ruthless corporate lawyer representing the ${userPerspective}. You are exclusively representing the interests of the ${userPerspective}. Ignore risks that only negatively impact the counterparty. Your sole objective is to protect the ${userPerspective} from liability and financial exposure.
 CRITICAL INSTRUCTION: You must analyze this contract strictly from the perspective of the ${userPerspective}.
@@ -208,7 +208,7 @@ Set requiresLawyerReview to TRUE if AND ONLY IF:
 - The overallRiskScore is >= 75.
 - OR the contract contains complex jurisdictional disputes outside of India.
 - OR the financial damage potential of a single flagged clause could bankrupt an SME (e.g., massive OEM delay penalties, unlimited indemnity exposure).
-If TRUE, write a concise, urgent 'lawyerReferralReasoning' (2-3 sentences) explaining exactly which clause makes this too dangerous to sign without a legal expert, addressed directly to an SME owner. If FALSE, set lawyerReferralReasoning to an empty string "".`
+If TRUE, write a concise, urgent 'lawyerReferralReasoning' (2-3 sentences) explaining exactly which clause makes this too dangerous to sign without a legal expert, addressed directly to an SME owner. If FALSE, set lawyerReferralReasoning to an empty string "".${ragBenchmarks ? `\n\n${ragBenchmarks}` : ''}`
 }
 
 export async function POST(req: Request) {
