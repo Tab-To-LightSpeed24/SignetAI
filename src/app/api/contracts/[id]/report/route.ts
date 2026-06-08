@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { contracts, clauses, contractDates } from '@/db/schema'
+import { contracts, clauses, contractDates, userPlaybook } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -42,6 +42,8 @@ export async function GET(
 
     const clauseRecords = await db.select().from(clauses).where(eq(clauses.contractId, params.id))
     const dateRecords = await db.select().from(contractDates).where(eq(contractDates.contractId, params.id))
+    const playbookRecords = await db.select().from(userPlaybook).where(eq(userPlaybook.userId, user.id))
+    const hasPlaybookRules = playbookRecords.length > 0
 
     return NextResponse.json({
       contract: {
@@ -53,6 +55,7 @@ export async function GET(
         contractType: contract.contractType,
         requiresLawyerReview: contract.requiresLawyerReview ?? false,
         lawyerReferralReasoning: contract.lawyerReferralReasoning ?? null,
+        hasPlaybookRules,
       },
       clauses: clauseRecords.map(c => ({
         id: c.id,

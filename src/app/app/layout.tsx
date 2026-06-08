@@ -64,13 +64,11 @@ function NavLink({ label, href, isActive, collapsed }: { label: string; href: st
       }}
     >
       <SidebarIcon label={label} color={isActive ? '#1D9E75' : 'rgba(255, 255, 255, 0.5)'} />
-      <span style={{
-        opacity: collapsed ? 0 : 1,
+      <span className="whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100" style={{
+        opacity: collapsed ? 0 : undefined,
         maxWidth: collapsed ? 0 : 160,
         marginLeft: collapsed ? 0 : 10,
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        transition: 'opacity 300ms ease, max-width 300ms ease, margin-left 300ms ease',
+        transition: 'max-width 300ms ease, margin-left 300ms ease',
       }}>
         {label}
       </span>
@@ -402,7 +400,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* ── LEFT SIDEBAR (Slide-out drawer on mobile, fixed/hover-expanded on desktop) ───── */}
         <aside
-          className={`fixed inset-y-0 left-0 z-[90] md:z-[46] flex flex-col border-r border-white/5 bg-[#09111e]/98 backdrop-blur-md md:bg-[#09111e]/95 transition-all duration-300 md:transition-[width,padding,top] md:duration-300 ease-in-out ${
+          className={`fixed inset-y-0 left-0 z-[90] md:z-[46] flex flex-col border-r border-white/5 bg-[#09111e]/98 backdrop-blur-md md:bg-[#09111e]/95 transition-all duration-300 md:transition-[width,padding,top] md:duration-300 ease-in-out group ${
             isMobileLayout ? (mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'
           }`}
           onMouseEnter={() => { if (!isMobileLayout) setIsSidebarExpanded(true) }}

@@ -5,6 +5,7 @@ import { useDropzone } from 'react-dropzone'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import useSWR from 'swr'
 import { 
   AlertTriangle, 
   AlertOctagon, 
@@ -92,71 +93,54 @@ export default function DashboardPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [contractToDelete, setContractToDelete] = useState<{ id: string; name: string; isCancel?: boolean } | null>(null)
+  const [pendingNavId, setPendingNavId] = useState<string | null>(null)
 
-  // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoadingData(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  // SWR for dashboard data
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR('dashboard-data', async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const headers = await getAuthHeader()
+    
+    const [usageRes, contractsRes, rulesRes] = await Promise.all([
+      fetch('/api/billing/usage-check', { headers }),
+      fetch('/api/contracts/search', { headers }),
+      fetch('/api/playbook', { headers })
+    ])
 
-      const headers = await getAuthHeader()
+    const billingData = usageRes.ok ? await usageRes.json() : { plan: 'free', used: 0, limit: 3 }
+    const contractsData = contractsRes.ok ? await contractsRes.json() : { contracts: [] }
+    const rulesData = rulesRes.ok ? await rulesRes.json() : { rules: [] }
 
-      // Fetch usage / profile details via backend API
-      const usageRes = await fetch('/api/billing/usage-check', { headers })
-      let billingData = { plan: 'free', used: 0, limit: 3 }
-      if (usageRes.ok) {
-        const d = await usageRes.json()
-        billingData = {
-          plan: d.plan ?? 'free',
-          used: d.used ?? 0,
-          limit: d.limit ?? 3
-        }
-      }
-
-      setProfile({
+    return {
+      profile: {
         fullName: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
         full_name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
-        plan: billingData.plan,
-        contractsUsedThisCycle: billingData.used,
-        contracts_used_this_cycle: billingData.used
-      })
+        plan: billingData.plan ?? 'free',
+        contractsUsedThisCycle: billingData.used ?? 0,
+        contracts_used_this_cycle: billingData.used ?? 0
+      },
+      contracts: contractsData.contracts || [],
+      rules: rulesData.rules || []
+    }
+  })
 
-      // Fetch contracts list via backend search API (returns all if query is empty)
-      const contractsRes = await fetch('/api/contracts/search', { headers })
-      if (contractsRes.ok) {
-        const data = await contractsRes.json()
-        if (data.success && data.contracts) {
-          setContractsList(data.contracts)
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-    } finally {
+  // Synchronize SWR data to local state to prevent breaking existing code
+  useEffect(() => {
+    if (dashboardData) {
+      setProfile(dashboardData.profile)
+      setContractsList(dashboardData.contracts)
+      setAllRules(dashboardData.rules)
       setLoadingData(false)
     }
-  }, [supabase, getAuthHeader])
+  }, [dashboardData])
 
-  // Fetch playbook rules
-  const fetchPlaybookRules = useCallback(async () => {
-    try {
-      const headers = await getAuthHeader()
-      const res = await fetch('/api/playbook', { headers })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.success && data.rules) {
-          setAllRules(data.rules)
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching playbook rules:', err)
-    }
-  }, [getAuthHeader])
+  const fetchDashboardData = useCallback(() => {
+    mutateDashboard()
+  }, [mutateDashboard])
 
-  useEffect(() => {
-    fetchDashboardData()
-    fetchPlaybookRules()
-  }, [fetchDashboardData, fetchPlaybookRules])
+  const fetchPlaybookRules = useCallback(() => {
+    mutateDashboard()
+  }, [mutateDashboard])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -1359,13 +1343,19 @@ export default function DashboardPage() {
                                     e.stopPropagation()
                                     e.preventDefault()
                                     setOpenMenuId(null); 
+                                    setPendingNavId(contract.id)
                                     router.push(`/app/contracts/${contract.id}`) 
                                   }}
                                   style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 14px', fontSize: 13, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
                                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                 >
-                                  <FileCheck size={14} /> View Analysis
+                                  {pendingNavId === contract.id ? (
+                                    <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                  ) : (
+                                    <FileCheck size={14} />
+                                  )}
+                                  View Analysis
                                 </button>
                                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', margin: '3px 0' }} />
                                 <button

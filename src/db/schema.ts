@@ -65,7 +65,7 @@ export const contractDates = pgTable('contract_dates', {
   id: uuid('id').primaryKey().defaultRandom(),
   contractId: uuid('contract_id').references(() => contracts.id, { onDelete: 'cascade' }),
   dateType: text('date_type'),
-  dateValue: date('date_value'),
+  dateValue: text('date_value'),
   description: text('description'),
   reminderSent: boolean('reminder_sent').default(false),
 });

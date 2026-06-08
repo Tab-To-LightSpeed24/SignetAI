@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         and(
           eq(reminders.active, true),
           eq(contractDates.reminderSent, false),
-          sql`${contractDates.dateValue}::date <= (CURRENT_DATE + (${reminders.remindDaysBefore} || ' days')::interval)::date`
+          sql`CASE WHEN ${contractDates.dateValue} ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN ${contractDates.dateValue}::date <= (CURRENT_DATE + (${reminders.remindDaysBefore} || ' days')::interval)::date ELSE false END`
         )
       )
 

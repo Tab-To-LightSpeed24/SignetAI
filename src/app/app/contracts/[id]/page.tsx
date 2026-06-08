@@ -50,6 +50,7 @@ interface AnalysisResult {
     contractType: string
     requiresLawyerReview: boolean
     lawyerReferralReasoning: string | null
+    hasPlaybookRules?: boolean
   }
   clauses: ClauseResult[]
   dates?: {
@@ -64,17 +65,19 @@ interface AnalysisResult {
 
 function riskBorderColor(score: number | undefined): string {
   if (!score) return 'rgba(255,255,255,0.08)'
-  return score >= 85 ? '#E24B4A' : score >= 70 ? '#E24B4A' : score >= 31 ? '#BA7517' : '#639922'
+  if (score > 10) return score >= 70 ? '#E24B4A' : score >= 31 ? '#BA7517' : '#639922'
+  return score >= 7 ? '#E24B4A' : score >= 4 ? '#BA7517' : '#639922'
 }
 
 function riskLabel(score: number | undefined): string {
   if (!score) return 'Unknown'
-  return score >= 85 ? 'CRITICAL RISK' : score >= 70 ? 'HIGH RISK' : score >= 31 ? 'MEDIUM RISK' : 'LOW RISK'
+  if (score > 10) return score >= 70 ? 'HIGH RISK' : score >= 31 ? 'MEDIUM RISK' : 'LOW RISK'
+  return score >= 7 ? 'HIGH RISK' : score >= 4 ? 'MEDIUM RISK' : 'LOW RISK'
 }
 
 function riskEmoji(score: number | undefined): React.ReactNode {
   if (!score) return <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.4)', display: 'inline-block' }} />
-  const color = score >= 70 ? '#E24B4A' : score >= 31 ? '#BA7517' : '#639922'
+  const color = score > 10 ? (score >= 70 ? '#E24B4A' : score >= 31 ? '#BA7517' : '#639922') : (score >= 7 ? '#E24B4A' : score >= 4 ? '#BA7517' : '#639922')
   return <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
 }
 
@@ -480,7 +483,7 @@ export default function ContractPage() {
           scrollToPdfPage(pageNumber)
         }, 350)
       }
-      return { ...prev, [clauseId]: nextVal }
+      return nextVal ? { [clauseId]: true } : {}
     })
   }, [scrollToPdfPage])
 
@@ -622,15 +625,19 @@ export default function ContractPage() {
           {/* LEFT PANE: Interactive High-Fidelity Report */}
           <div 
             id="pdf-export-content" 
-            className="w-full md:w-[45%] h-[50vh] md:h-full flex flex-col min-w-0 md:min-w-[420px]"
-            style={{ 
-              flex: isPdfMinimized ? '1 1 100%' : '1 1 45%', 
-              maxWidth: isPdfMinimized ? 'none' : 580, 
+            className={isPdfMinimized 
+              ? "fixed inset-0 z-50 w-screen h-screen bg-background overflow-hidden flex flex-col" 
+              : "w-full md:w-[45%] h-[50vh] md:h-full flex flex-col min-w-0 md:min-w-[420px]"
+            }
+            style={isPdfMinimized ? { padding: '24px 32px', overflowY: 'auto' } : { 
+              flex: '1 1 45%', 
+              maxWidth: 580, 
               overflowY: 'auto', 
               paddingRight: 12, 
               transition: 'all 300ms ease-in-out'
             }}
           >
+            <div className={isPdfMinimized ? "w-full max-w-5xl mx-auto flex flex-col" : "flex flex-col"}>
             
             {/* Sticky Page Header */}
             <div style={{
@@ -639,21 +646,17 @@ export default function ContractPage() {
               zIndex: 10,
               marginBottom: 20,
             }}>
-            <div style={{
+            <div className="flex flex-col" style={{
               background: 'rgba(10, 18, 30, 0.88)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255,255,255,0.09)',
               borderRadius: 12,
-              padding: '12px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              padding: '16px',
               boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
-              minWidth: 0,
             }}>
-              {/* Left side: Contract Name (Editable Inline) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, overflow: 'hidden', minWidth: 0 }}>
+              {/* Top Row: Contract Name (Editable Inline) */}
+              <div className="w-full truncate text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 {isEditingName ? (
                   <input
                     type="text"
@@ -706,8 +709,8 @@ export default function ContractPage() {
                 )}
               </div>
 
-              {/* Right side: Secondary action CTAs & kebab */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {/* Bottom Row: Secondary action CTAs & kebab */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <button 
                   onClick={() => setIsPdfMinimized(!isPdfMinimized)}
                   className="btn-secondary" 
@@ -732,159 +735,18 @@ export default function ContractPage() {
                 <button 
                   onClick={async () => {
                     setIsExporting(true);
-                    showToast('Generating B2B Export PDF...', 'info');
+                    showToast('Generating Native PDF...', 'info');
                     try {
-                      const html2pdf = (await import('html2pdf.js')).default;
-                      
-                      // The HTML string template (Keep your exact styling)
-                      const htmlString = `
-                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-                        <div style="padding: 44px; background: #FFFFFF; font-family: 'Inter', -apple-system, sans-serif; color: #1E293B; line-height: 1.6; max-width: 760px; width: 100%; box-sizing: border-box; margin: 0 auto;">
-                          
-                          <!-- Premium Branded Header -->
-                          <div style="border-bottom: 2px solid #E2E8F0; padding-bottom: 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                              <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 800; color: #0F172A; letter-spacing: -0.03em;">Signet <span style="color: #6366F1;">AI</span></span>
-                              </div>
-                              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; font-family: 'Outfit', sans-serif;">Automated Contract Risk Report</p>
-                            </div>
-                            <div style="text-align: right;">
-                              <h2 style="margin: 0; font-size: 16px; color: #0F172A; font-weight: 700; font-family: 'Outfit', sans-serif;">${contractName}</h2>
-                              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B;">Analyzed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            </div>
-                          </div>
-
-                          <!-- Executive Summary & Overall Risk Score -->
-                          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 6px solid ${riskColor}; padding: 28px; border-radius: 16px; margin-bottom: 32px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                              <span style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; padding: 6px 14px; background: ${overallRisk >= 7 ? '#FEF2F2' : overallRisk >= 4 ? '#FEF3C7' : '#ECFDF5'}; color: ${riskColor}; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid ${overallRisk >= 7 ? '#FEE2E2' : overallRisk >= 4 ? '#FEEB8A' : '#D1FAE5'};">
-                                ${riskLabel(overallRisk).toUpperCase()} COMPLIANCE RISK
-                              </span>
-                              <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 13px; color: #64748B; font-weight: 500;">Risk Score:</span>
-                                <span style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: #0F172A;">${overallRisk} <span style="font-size: 16px; color: #64748B; font-weight: 500;">/ 10</span></span>
-                              </div>
-                            </div>
-                            <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #0F172A; font-family: 'Outfit', sans-serif; font-weight: 600;">Executive Summary</h3>
-                            <p style="margin: 0; font-size: 14.5px; line-height: 1.7; color: #334155; font-style: italic;">
-                              &ldquo;${result?.contract.summary}&rdquo;
-                            </p>
-                          </div>
-
-                          <!-- Key Analytics Grid -->
-                          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px;">
-                            <div style="background: #FFFFFF; padding: 16px; border-radius: 12px; border: 1px solid #E2E8F0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                              <div style="font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Total Clauses</div>
-                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #0F172A; margin-top: 6px;">${totalClauses}</div>
-                            </div>
-                            <div style="background: #FEF2F2; padding: 16px; border-radius: 12px; border: 1px solid #FEE2E2; text-align: center;">
-                              <div style="font-size: 11px; color: #EF4444; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">High Risk</div>
-                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #EF4444; margin-top: 6px;">${activeHighRisk}</div>
-                            </div>
-                            <div style="background: #FEF3C7; padding: 16px; border-radius: 12px; border: 1px solid #FDE68A; text-align: center;">
-                              <div style="font-size: 11px; color: #D97706; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Medium Risk</div>
-                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #D97706; margin-top: 6px;">${activeMediumRisk}</div>
-                            </div>
-                            <div style="background: #ECFDF5; padding: 16px; border-radius: 12px; border: 1px solid #A7F3D0; text-align: center;">
-                              <div style="font-size: 11px; color: #059669; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Key Dates</div>
-                              <div style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #059669; margin-top: 6px;">${datesList.length}</div>
-                            </div>
-                          </div>
-
-                          <!-- Timeline Milestones Section (If present) -->
-                          ${datesList.length > 0 ? `
-                            <div style="margin-bottom: 36px; page-break-inside: avoid;">
-                              <h3 style="font-size: 18px; color: #0F172A; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; margin: 0 0 18px 0; font-family: 'Outfit', sans-serif; font-weight: 600;">Timeline Milestones</h3>
-                              <div style="display: flex; flex-direction: column; gap: 12px;">
-                                ${datesList.map(d => `
-                                  <div style="background: #FFFDF9; border: 1px solid #FEF3C7; border-left: 5px solid #F59E0B; padding: 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                                    <div>
-                                      <span style="font-size: 11px; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.05em;">${d.type}</span>
-                                      <div style="font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: #1E293B; margin-top: 4px;">${d.value}</div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                      <span style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: ${d.daysRemaining <= 60 ? '#EF4444' : '#059669'};">${d.daysRemaining}</span>
-                                      <span style="font-size: 13px; color: #64748B; font-weight: 500;"> days remaining</span>
-                                    </div>
-                                  </div>
-                                `).join('')}
-                              </div>
-                            </div>
-                          ` : ''}
-
-                          <div style="page-break-after: always;"></div>
-
-                          <!-- Detailed Analysis Header -->
-                          <h3 style="font-size: 22px; color: #0F172A; margin: 0 0 28px 0; border-bottom: 2px solid #0F172A; padding-bottom: 12px; font-family: 'Outfit', sans-serif; font-weight: 700;">Detailed Clause Analysis</h3>
-
-                          <div style="display: flex; flex-direction: column; gap: 28px;">
-                            ${sortedClauses.map((c, idx) => `
-                              <div style="page-break-inside: avoid; border: 1px solid #E2E8F0; border-left: 6px solid ${riskBorderColor(c.riskScore)}; border-radius: 16px; padding: 24px; background: #FFFFFF; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 20px;">
-                                <!-- Card Header -->
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
-                                  <h4 style="margin: 0; font-size: 16px; color: #0F172A; font-weight: 700; font-family: 'Outfit', sans-serif;">
-                                    ${idx + 1}. ${c.clauseType} <span style="color: #64748B; font-weight: 500; font-size: 14px;">(Page ${c.pageNumber || 'N/A'})</span>
-                                  </h4>
-                                  <span style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: ${c.riskScore >= 7 ? '#FEF2F2' : c.riskScore >= 4 ? '#FEF3C7' : '#ECFDF5'}; color: ${riskBorderColor(c.riskScore)}; border: 1px solid ${c.riskScore >= 7 ? '#FEE2E2' : c.riskScore >= 4 ? '#FEEB8A' : '#D1FAE5'};">
-                                    RISK: ${c.riskScore} / 10
-                                  </span>
-                                </div>
-
-                                <!-- Playbook Violation Banner -->
-                                ${c.isPlaybookViolation ? `
-                                  <div style="background: #FEF2F2; border: 1px solid #FEE2E2; border-left: 4px solid #EF4444; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: #B91C1C; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                                    <span>⚠️</span> Playbook Rule Violation Detected
-                                  </div>
-                                ` : ''}
-
-                                <!-- Original text -->
-                                <div style="margin-bottom: 18px;">
-                                  <div style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: 'Outfit', sans-serif;">Original Contract Language</div>
-                                  <div style="font-size: 12.5px; font-family: monospace; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px; color: #334155; white-space: pre-wrap; line-height: 1.6;">
-                                    ${c.originalText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-                                  </div>
-                                </div>
-
-                                <!-- Plain English -->
-                                <div style="margin-bottom: 18px;">
-                                  <div style="font-size: 11px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: 'Outfit', sans-serif;">Plain English Translation</div>
-                                  <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.6; font-weight: 500;">${c.plainEnglish}</p>
-                                </div>
-
-                                <!-- Risk Context -->
-                                ${c.negotiationTip ? `
-                                  <div style="margin-bottom: 18px;">
-                                    <div style="font-size: 11px; font-weight: 700; color: ${c.riskScore >= 7 ? '#EF4444' : '#D97706'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: 'Outfit', sans-serif;">Risk Exposure Tip</div>
-                                    <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">${c.negotiationTip}</p>
-                                  </div>
-                                ` : ''}
-
-                                <!-- Suggested Counter-Clause -->
-                                ${c.negotiationLanguage ? `
-                                  <div style="background: #F0FDF4; border: 1px solid #DCFCE7; border-left: 5px solid #16A34A; padding: 18px; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                                    <div style="font-size: 11px; font-weight: 700; color: #16A34A; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-family: 'Outfit', sans-serif;">Suggested Counter-Clause (Tier-1 Standard)</div>
-                                    <div style="font-size: 12.5px; font-family: monospace; background: rgba(255,255,255,0.9); padding: 12px; border-radius: 6px; color: #14532D; line-height: 1.6; border: 1px dashed #BBF7D0; white-space: pre-wrap;">
-                                      ${c.negotiationLanguage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-                                    </div>
-                                  </div>
-                                ` : ''}
-                              </div>
-                            `).join('')}
-                          </div>
-                        </div>
-                      `;
-                      
-                      const opt = {
-                        margin: [10, 14, 10, 14] as [number, number, number, number],
-                        filename: `${contractName.replace(/\s+/g, '_')}_Risk_Report.pdf`,
-                        image: { type: 'jpeg' as const, quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
-                        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
-                      };
-                                            
-                      // Pass the raw HTML string directly to bypass DOM paint clipping
-                      await html2pdf().set(opt).from(htmlString).save();
+                      const { generatePdfBlob } = await import('@/components/ReportPDF');
+                      const blob = await generatePdfBlob(result, contractName, userPlan);
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `${contractName.replace(/\s+/g, '_')}_Risk_Report.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
                       
                       showToast('Risk report exported as PDF!', 'success');
                     } catch (err) {
@@ -1307,7 +1169,7 @@ export default function ContractPage() {
                 boxSizing: 'border-box'
               }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: '#E24B4A', display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 12px 0' }}>
-                  <AlertTriangle size={15} /> Playbook alert: {playbookViolations.length} items require attention
+                  <AlertTriangle size={15} /> {result?.contract?.hasPlaybookRules ? 'Playbook alert' : 'Legal Benchmark alert'}: {playbookViolations.length} items require attention
                 </h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1325,11 +1187,11 @@ export default function ContractPage() {
                       }}
                     >
                       <div style={{ flex: 1, paddingRight: 12 }}>
-                        <div style={{ fontSize: 11, color: 'rgba(226,75,74,0.7)', fontWeight: 600 }}>PLAYBOOK VIOLATION</div>
+                        <div style={{ fontSize: 11, color: 'rgba(226,75,74,0.7)', fontWeight: 600 }}>
+                          {result?.contract?.hasPlaybookRules ? 'PLAYBOOK VIOLATION' : 'STATUTORY / BENCHMARK VIOLATION'}
+                        </div>
                         <div style={{ fontSize: 13, color: '#fff', marginTop: 4, fontStyle: 'italic' }}>
-                          Preference: &ldquo;{pv.clauseType
-                            ? `This clause type (${pv.clauseType}) violates an industry standard or injected legal benchmark.`
-                            : 'Violates Industry Standard or Injected Legal Benchmark'}&rdquo;
+                          Reasoning: &ldquo;{pv.negotiationTip || pv.plainEnglish}&rdquo;
                         </div>
                         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
                           Violated by: {pv.clauseType} (Section {pv.pageNumber ? `${pv.pageNumber}` : `${pv.originalIndex + 1}`})
@@ -1339,7 +1201,7 @@ export default function ContractPage() {
                       <button
                         onClick={() => {
                           scrollToPdfPage(pv.pageNumber)
-                          setExpandedCards(prev => ({ ...prev, [pv.id]: true }))
+                          setExpandedCards({ [pv.id]: true })
                           setActiveFilter('all')
                           setTimeout(() => {
                             const card = document.getElementById(`clause-card-${pv.id}`)
@@ -1723,6 +1585,7 @@ export default function ContractPage() {
                 </div>
               </div>
             )}
+            </div>
 
           </div>
 

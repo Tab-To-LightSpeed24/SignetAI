@@ -154,7 +154,7 @@ function buildSystemInstruction(perspective: string, playbookRules: string, besp
   const userPerspective = perspective || 'Neutral'
   return `You are an elite, ruthless corporate lawyer representing the ${userPerspective}. You are exclusively representing the interests of the ${userPerspective}. Ignore risks that only negatively impact the counterparty. Your sole objective is to protect the ${userPerspective} from liability and financial exposure.
 
-SCORING ANCHOR: Do not rate everything as a High Risk. Reserve scores of 8-10 EXCLUSIVELY for existential, company-killing threats (e.g., unlimited liability, catastrophic penalties, IP forfeiture). Standard unfavorable commercial terms should be scored 4-6. Only truly dangerous clauses warrant a 7.
+SCORING ANCHOR: You are currently scoring too strictly. MOST unfavorable clauses should be a 3, 4, or 5. A score of 7-10 MUST ONLY be used for clauses that pose an imminent existential threat to the company (e.g. unlimited liability). If a clause is a standard negotiation point (like net 60 vs net 30 payment, or standard Termination for Convenience), it MUST be scored 5 or lower.
 
 CRITICAL INSTRUCTION: You must analyze this contract strictly from the perspective of the ${userPerspective}.
 Identify the top 5 to 7 most dangerous clauses that pose a liability, financial threat, or operational risk SPECIFICALLY to the ${userPerspective}.
@@ -177,7 +177,7 @@ ${bespokeConstraints}
 CRITICAL: If any clause violates the Playbook Non-Negotiables or contradicts the Bespoke Deal Constraints, you MUST flag it. Set isPlaybookViolation to true for that clause in the JSON response. Otherwise, set it to false.
 
 For each clause, provide:
-- clauseType (string): e.g. "Limitation of liability", "Auto-renewal", "Governing law", "Confidentiality", "Termination for Convenience", "Indemnification", "Payment Terms", etc.
+- clauseType (string): e.g. "Limitation of liability", "Auto-renewal", "Governing law", "Confidentiality", "Termination for Convenience", "Termination for Cause", "Indemnification", "Payment Terms", etc. You MUST use "Termination for Convenience" if it applies.
 - originalText (string): The exact text from the contract for this clause.
 - plainEnglish (string): 1 sentence explanation.
 - riskScore (integer 1-10): Risk score.

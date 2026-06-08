@@ -30,7 +30,7 @@ const toolbarBtnStyle: React.CSSProperties = {
   lineHeight: 1,
 }
 
-export default function PdfViewerPane({
+export default React.memo(function PdfViewerPane({
   pdfFile, totalPages, setTotalPages, zoom, zoomIn, zoomOut
 }: PdfViewerPaneProps) {
   return (
@@ -56,26 +56,28 @@ export default function PdfViewerPane({
         }}
       >
         {pdfFile ? (
-          <Document 
-            file={pdfFile} 
-            onLoadSuccess={({ numPages }) => setTotalPages(numPages)}
-            loading={<p style={{ color: '#666', margin: 'auto' }}>Loading PDF...</p>}
-          >
-            {Array.from(new Array(totalPages), (el, index) => (
-              <div key={`page_${index + 1}`} id={`pdf-page-${index + 1}`} style={{ boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
-                <Page
-                  pageNumber={index + 1}
-                  scale={zoom}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={false}
-                />
-              </div>
-            ))}
-          </Document>
+          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', transition: 'transform 0.15s ease' }}>
+            <Document 
+              file={pdfFile} 
+              onLoadSuccess={({ numPages }) => setTotalPages(numPages)}
+              loading={<p style={{ color: '#666', margin: 'auto' }}>Loading PDF...</p>}
+            >
+              {Array.from(new Array(totalPages), (el, index) => (
+                <div key={`page_${index + 1}`} id={`pdf-page-${index + 1}`} style={{ boxShadow: '0 0 20px rgba(0,0,0,0.5)', marginBottom: 20 }}>
+                  <Page
+                    pageNumber={index + 1}
+                    scale={1.0}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={false}
+                  />
+                </div>
+              ))}
+            </Document>
+          </div>
         ) : (
           <p style={{ color: '#666', margin: 'auto' }}>Waiting for PDF...</p>
         )}
       </div>
     </>
   )
-}
+})

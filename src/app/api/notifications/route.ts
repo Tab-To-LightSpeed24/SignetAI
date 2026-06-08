@@ -41,7 +41,7 @@ export async function GET(_req: Request) {
         and(
           eq(contracts.userId, userId),
           eq(contractDates.reminderSent, false),
-          sql`${contractDates.dateValue}::date <= (CURRENT_DATE + interval '90 days')`
+          sql`CASE WHEN ${contractDates.dateValue} ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN ${contractDates.dateValue}::date <= (CURRENT_DATE + interval '90 days') ELSE false END`
         )
       )
       .orderBy(contractDates.dateValue)

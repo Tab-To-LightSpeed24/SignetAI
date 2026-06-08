@@ -120,7 +120,14 @@ export default function CalendarPage() {
 
   // Get active milestones sorted chronologically
   const upcomingMilestones = useMemo(() => {
-    return [...milestones].sort((a, b) => new Date(a.dateValue).getTime() - new Date(b.dateValue).getTime())
+    return [...milestones].sort((a, b) => {
+      const timeA = new Date(a.dateValue).getTime()
+      const timeB = new Date(b.dateValue).getTime()
+      if (isNaN(timeA) && isNaN(timeB)) return 0
+      if (isNaN(timeA)) return 1
+      if (isNaN(timeB)) return -1
+      return timeA - timeB
+    })
   }, [milestones])
 
   // Selected date milestones
@@ -216,6 +223,9 @@ export default function CalendarPage() {
 
   const getDaysRemainingString = (dateVal: string) => {
     const milestoneDate = new Date(dateVal)
+    if (isNaN(milestoneDate.getTime())) {
+      return { label: 'Relative date', color: 'var(--text-muted)' }
+    }
     milestoneDate.setHours(0,0,0,0)
     const today = new Date()
     today.setHours(0,0,0,0)
@@ -555,7 +565,10 @@ export default function CalendarPage() {
                       const badge = getBadgeStyles(m.dateType)
                       const timeStr = getDaysRemainingString(m.dateValue)
                       const dateObj = new Date(m.dateValue)
-                      const formattedDate = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                      const isDateValid = !isNaN(dateObj.getTime())
+                      const formattedDate = isDateValid 
+                        ? dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : m.dateValue
 
                       return (
                         <div
@@ -580,10 +593,10 @@ export default function CalendarPage() {
                             minWidth: 50, textAlign: 'center',
                           }}>
                             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
-                              {dateObj.toLocaleDateString('en-GB', { month: 'short' })}
+                              {isDateValid ? dateObj.toLocaleDateString('en-GB', { month: 'short' }) : 'N/A'}
                             </span>
                             <span style={{ fontSize: 16, fontWeight: 800 }}>
-                              {dateObj.getDate()}
+                              {isDateValid ? dateObj.getDate() : '-'}
                             </span>
                           </div>
 
